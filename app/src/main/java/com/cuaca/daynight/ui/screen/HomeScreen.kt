@@ -19,6 +19,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,6 +39,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cuaca.daynight.data.location.LocationClient
 import com.cuaca.daynight.data.location.LocationHelper
+import com.cuaca.daynight.data.preferences.ThemeMode
+import com.cuaca.daynight.data.preferences.ThemePreferences
 import com.cuaca.daynight.ui.components.DailyForecastCard
 import com.cuaca.daynight.ui.components.HourlyForecastCard
 import com.cuaca.daynight.ui.components.WeatherCard
@@ -59,6 +64,14 @@ fun HomeScreen(
     val locationHelper = remember {
         LocationHelper(context)
     }
+
+    val themePreferences = remember {
+        ThemePreferences(context.applicationContext)
+    }
+
+    val themeMode by themePreferences.themeMode.collectAsState(
+        initial = ThemeMode.SYSTEM
+    )
 
     var cityName by remember {
         mutableStateOf("Mencari lokasi...")
@@ -191,6 +204,44 @@ fun HomeScreen(
                     text = "Informasi cuaca hari ini",
                     style = MaterialTheme.typography.bodyMedium
                 )
+            }
+        }
+
+        item {
+            Column {
+                Text(
+                    text = "Tema Tampilan",
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                SingleChoiceSegmentedButtonRow(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val modes = listOf(
+                        ThemeMode.LIGHT to "Terang",
+                        ThemeMode.DARK to "Gelap",
+                        ThemeMode.SYSTEM to "Sistem"
+                    )
+
+                    modes.forEachIndexed { index, (mode, label) ->
+                        SegmentedButton(
+                            selected = themeMode == mode,
+                            onClick = {
+                                scope.launch {
+                                    themePreferences.saveTheme(mode)
+                                }
+                            },
+                            shape = SegmentedButtonDefaults.itemShape(
+                                index = index,
+                                count = modes.size
+                            )
+                        ) {
+                            Text(label)
+                        }
+                    }
+                }
             }
         }
 
