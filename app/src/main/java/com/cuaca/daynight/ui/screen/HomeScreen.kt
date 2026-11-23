@@ -3,34 +3,12 @@ package com.cuaca.daynight.ui.screen
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -39,31 +17,31 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cuaca.daynight.data.location.LocationClient
 import com.cuaca.daynight.data.location.LocationHelper
+import com.cuaca.daynight.data.preferences.AppLanguage
 import com.cuaca.daynight.data.preferences.ThemeMode
 import com.cuaca.daynight.data.preferences.ThemePreferences
 import com.cuaca.daynight.ui.components.DailyForecastCard
 import com.cuaca.daynight.ui.components.HourlyForecastCard
+import com.cuaca.daynight.ui.components.LanguageSelector
 import com.cuaca.daynight.ui.components.WeatherCard
 import com.cuaca.daynight.ui.components.WeatherInfoCard
+import com.cuaca.daynight.ui.theme.DayNightTheme
 import com.cuaca.daynight.viewmodel.WeatherViewModel
 import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
-    viewModel: WeatherViewModel = viewModel()
+    viewModel: WeatherViewModel = viewModel(),
+    selectedLanguage: AppLanguage = AppLanguage.INDONESIAN,
+    onLanguageSelected: (AppLanguage) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    val locationClient = remember {
-        LocationClient(context)
-    }
-
-    val locationHelper = remember {
-        LocationHelper(context)
-    }
+    val locationClient = remember { LocationClient(context) }
+    val locationHelper = remember { LocationHelper(context) }
 
     val themePreferences = remember {
         ThemePreferences(context.applicationContext)
@@ -72,6 +50,8 @@ fun HomeScreen(
     val themeMode by themePreferences.themeMode.collectAsState(
         initial = ThemeMode.SYSTEM
     )
+
+    val isEnglish = selectedLanguage == AppLanguage.ENGLISH
 
     var cityName by remember {
         mutableStateOf("Mencari lokasi...")
@@ -116,13 +96,18 @@ fun HomeScreen(
                         longitude = location.longitude
                     )
                 } else {
-                    locationError =
+                    locationError = if (isEnglish) {
+                        "Location not found. Please enable GPS."
+                    } else {
                         "Lokasi tidak ditemukan. Coba aktifkan GPS HP."
+                    }
                 }
-
             } catch (e: Exception) {
-                locationError =
+                locationError = if (isEnglish) {
+                    "Failed to get device location."
+                } else {
                     e.message ?: "Gagal mendapatkan lokasi."
+                }
             } finally {
                 isGettingLocation = false
             }
@@ -131,7 +116,11 @@ fun HomeScreen(
 
     fun searchCity() {
         if (cityInput.isBlank()) {
-            searchError = "Masukkan nama kota terlebih dahulu."
+            searchError = if (isEnglish) {
+                "Please enter a city name."
+            } else {
+                "Masukkan nama kota terlebih dahulu."
+            }
             return
         }
 
@@ -151,11 +140,18 @@ fun HomeScreen(
                         longitude = coordinates.second
                     )
                 } else {
-                    searchError = "Kota tidak ditemukan."
+                    searchError = if (isEnglish) {
+                        "City not found."
+                    } else {
+                        "Kota tidak ditemukan."
+                    }
                 }
-
             } catch (e: Exception) {
-                searchError = "Gagal mencari lokasi kota."
+                searchError = if (isEnglish) {
+                    "Failed to search for the city."
+                } else {
+                    "Gagal mencari lokasi kota."
+                }
             } finally {
                 isSearchingCity = false
             }
@@ -166,14 +162,16 @@ fun HomeScreen(
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestMultiplePermissions()
         ) { permissions ->
-
             val granted = permissions.values.any { it }
 
             if (granted) {
                 getWeatherFromLocation()
             } else {
-                locationError =
+                locationError = if (isEnglish) {
+                    "Location permission is required to show local weather."
+                } else {
                     "Izin lokasi diperlukan untuk menampilkan cuaca di sekitar kamu."
+                }
             }
         }
 
@@ -201,30 +199,41 @@ fun HomeScreen(
                 )
 
                 Text(
-                    text = "Informasi cuaca hari ini",
+                    text = if (isEnglish) {
+                        "Today's weather information"
+                    } else {
+                        "Informasi cuaca hari ini"
+                    },
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
         }
 
         item {
+            LanguageSelector(
+                selectedLanguage = selectedLanguage,
+                onLanguageSelected = onLanguageSelected
+            )
+        }
+
+        item {
             Column {
                 Text(
-                    text = "Tema Tampilan",
+                    text = if (isEnglish) "Appearance Theme" else "Tema Tampilan",
                     style = MaterialTheme.typography.titleMedium
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                val modes = listOf(
+                    ThemeMode.LIGHT to if (isEnglish) "Light" else "Terang",
+                    ThemeMode.DARK to if (isEnglish) "Dark" else "Gelap",
+                    ThemeMode.SYSTEM to if (isEnglish) "System" else "Sistem"
+                )
+
                 SingleChoiceSegmentedButtonRow(
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    val modes = listOf(
-                        ThemeMode.LIGHT to "Terang",
-                        ThemeMode.DARK to "Gelap",
-                        ThemeMode.SYSTEM to "Sistem"
-                    )
-
                     modes.forEachIndexed { index, (mode, label) ->
                         SegmentedButton(
                             selected = themeMode == mode,
@@ -255,10 +264,10 @@ fun HomeScreen(
                     },
                     modifier = Modifier.fillMaxWidth(),
                     label = {
-                        Text("Cari nama kota")
+                        Text(if (isEnglish) "Search city" else "Cari nama kota")
                     },
                     placeholder = {
-                        Text("Contoh: Jakarta")
+                        Text(if (isEnglish) "Example: Jakarta" else "Contoh: Jakarta")
                     },
                     singleLine = true
                 )
@@ -266,19 +275,17 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Button(
-                    onClick = {
-                        searchCity()
-                    },
+                    onClick = { searchCity() },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !isSearchingCity
                 ) {
                     if (isSearchingCity) {
                         CircularProgressIndicator(
-                            modifier = Modifier.height(18.dp),
+                            modifier = Modifier.size(18.dp),
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Text("Cari Cuaca")
+                        Text(if (isEnglish) "Search Weather" else "Cari Cuaca")
                     }
                 }
 
@@ -308,9 +315,23 @@ fun HomeScreen(
 
                         Text(
                             text = when {
-                                isGettingLocation -> "Mencari lokasi HP..."
-                                isSearchingCity -> "Mencari kota..."
-                                else -> "Memuat data cuaca..."
+                                isGettingLocation -> if (isEnglish) {
+                                    "Getting device location..."
+                                } else {
+                                    "Mencari lokasi HP..."
+                                }
+
+                                isSearchingCity -> if (isEnglish) {
+                                    "Searching city..."
+                                } else {
+                                    "Mencari kota..."
+                                }
+
+                                else -> if (isEnglish) {
+                                    "Loading weather data..."
+                                } else {
+                                    "Memuat data cuaca..."
+                                }
                             }
                         )
                     }
@@ -320,7 +341,11 @@ fun HomeScreen(
             uiState.error != null && uiState.weather == null -> {
                 item {
                     Text(
-                        text = "Gagal mengambil data: ${uiState.error}",
+                        text = if (isEnglish) {
+                            "Failed to get weather data: ${uiState.error}"
+                        } else {
+                            "Gagal mengambil data: ${uiState.error}"
+                        },
                         color = MaterialTheme.colorScheme.error
                     )
                 }
@@ -348,7 +373,10 @@ fun HomeScreen(
                             },
                             modifier = Modifier.padding(top = 12.dp)
                         ) {
-                            Text("Izinkan Lokasi")
+                            Text(
+                                if (isEnglish) "Grant Location Permission"
+                                else "Izinkan Lokasi"
+                            )
                         }
                     }
                 }
@@ -363,7 +391,8 @@ fun HomeScreen(
                         city = cityName,
                         temperature = current.temperature,
                         description = getWeatherDescription(
-                            current.weatherCode
+                            current.weatherCode,
+                            isEnglish
                         ),
                         weatherIcon = getWeatherIcon(
                             current.weatherCode,
@@ -375,7 +404,7 @@ fun HomeScreen(
                 item {
                     Column {
                         Text(
-                            text = "Prakiraan Per Jam",
+                            text = if (isEnglish) "Hourly Forecast" else "Prakiraan Per Jam",
                             style = MaterialTheme.typography.titleLarge
                         )
 
@@ -385,9 +414,7 @@ fun HomeScreen(
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(
-                                weather.hourly.time.indices
-                                    .take(8)
-                                    .toList()
+                                weather.hourly.time.indices.take(8).toList()
                             ) { index ->
                                 HourlyForecastCard(
                                     time = weather.hourly.time[index]
@@ -407,7 +434,7 @@ fun HomeScreen(
                 item {
                     Column {
                         Text(
-                            text = "Informasi Cuaca",
+                            text = if (isEnglish) "Weather Information" else "Informasi Cuaca",
                             style = MaterialTheme.typography.titleLarge
                         )
 
@@ -418,14 +445,14 @@ fun HomeScreen(
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             WeatherInfoCard(
-                                title = "Kelembapan",
+                                title = if (isEnglish) "Humidity" else "Kelembapan",
                                 value = "${current.humidity}%",
                                 icon = "💧",
                                 modifier = Modifier.weight(1f)
                             )
 
                             WeatherInfoCard(
-                                title = "Kecepatan Angin",
+                                title = if (isEnglish) "Wind Speed" else "Kecepatan Angin",
                                 value = "${current.windSpeed} km/j",
                                 icon = "💨",
                                 modifier = Modifier.weight(1f)
@@ -439,7 +466,7 @@ fun HomeScreen(
                         weather.hourly.precipitationProbability.firstOrNull() ?: 0
 
                     WeatherInfoCard(
-                        title = "Kemungkinan Hujan",
+                        title = if (isEnglish) "Rain Probability" else "Kemungkinan Hujan",
                         value = "$rainChance%",
                         icon = "🌧️",
                         modifier = Modifier.fillMaxWidth()
@@ -448,7 +475,7 @@ fun HomeScreen(
 
                 item {
                     Text(
-                        text = "Prakiraan 7 Hari",
+                        text = if (isEnglish) "7-Day Forecast" else "Prakiraan 7 Hari",
                         style = MaterialTheme.typography.titleLarge
                     )
                 }
@@ -461,7 +488,8 @@ fun HomeScreen(
                             1
                         ),
                         description = getWeatherDescription(
-                            weather.daily.weatherCode[index]
+                            weather.daily.weatherCode[index],
+                            isEnglish
                         ),
                         temperatureMin = weather.daily.temperatureMin[index],
                         temperatureMax = weather.daily.temperatureMax[index]
@@ -472,21 +500,24 @@ fun HomeScreen(
     }
 }
 
-private fun getWeatherDescription(code: Int): String {
+private fun getWeatherDescription(
+    code: Int,
+    isEnglish: Boolean = false
+): String {
     return when (code) {
-        0 -> "Cerah"
-        1 -> "Cerah berawan"
-        2 -> "Berawan sebagian"
-        3 -> "Mendung"
-        45, 48 -> "Berkabut"
-        51, 53, 55 -> "Gerimis"
-        61, 63, 65 -> "Hujan"
-        66, 67 -> "Hujan beku"
-        71, 73, 75, 77 -> "Salju"
-        80, 81, 82 -> "Hujan deras"
-        85, 86 -> "Hujan salju"
-        95, 96, 99 -> "Badai petir"
-        else -> "Tidak diketahui"
+        0 -> if (isEnglish) "Clear sky" else "Cerah"
+        1 -> if (isEnglish) "Mainly clear" else "Cerah berawan"
+        2 -> if (isEnglish) "Partly cloudy" else "Berawan sebagian"
+        3 -> if (isEnglish) "Overcast" else "Mendung"
+        45, 48 -> if (isEnglish) "Fog" else "Berkabut"
+        51, 53, 55 -> if (isEnglish) "Drizzle" else "Gerimis"
+        61, 63, 65 -> if (isEnglish) "Rain" else "Hujan"
+        66, 67 -> if (isEnglish) "Freezing rain" else "Hujan beku"
+        71, 73, 75, 77 -> if (isEnglish) "Snow" else "Salju"
+        80, 81, 82 -> if (isEnglish) "Rain showers" else "Hujan deras"
+        85, 86 -> if (isEnglish) "Snow showers" else "Hujan salju"
+        95, 96, 99 -> if (isEnglish) "Thunderstorm" else "Badai petir"
+        else -> if (isEnglish) "Unknown" else "Tidak diketahui"
     }
 }
 
@@ -509,113 +540,143 @@ private fun getWeatherIcon(code: Int, isDay: Int): String {
 @Preview(
     showBackground = true,
     showSystemUi = true,
-    name = "DayNight Home Preview"
+    name = "DayNight Home - Indonesia"
 )
 @Composable
 fun HomeScreenPreview() {
-    MaterialTheme {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            contentPadding = PaddingValues(vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                Column {
-                    Text(
-                        text = "DayNight",
-                        style = MaterialTheme.typography.headlineMedium
-                    )
+    DayNightTheme {
+        HomeScreenPreviewContent(
+            language = AppLanguage.INDONESIAN
+        )
+    }
+}
 
-                    Text(
-                        text = "Informasi cuaca hari ini",
-                        style = MaterialTheme.typography.bodyMedium
+@Preview(
+    showBackground = true,
+    showSystemUi = true,
+    name = "DayNight Home - English"
+)
+@Composable
+fun HomeScreenEnglishPreview() {
+    DayNightTheme {
+        HomeScreenPreviewContent(
+            language = AppLanguage.ENGLISH
+        )
+    }
+}
+
+@Composable
+private fun HomeScreenPreviewContent(language: AppLanguage) {
+    val isEnglish = language == AppLanguage.ENGLISH
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        contentPadding = PaddingValues(vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            Text(
+                text = "DayNight",
+                style = MaterialTheme.typography.headlineMedium
+            )
+
+            Text(
+                text = if (isEnglish) {
+                    "Today's weather information"
+                } else {
+                    "Informasi cuaca hari ini"
+                },
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+
+        item {
+            LanguageSelector(
+                selectedLanguage = language,
+                onLanguageSelected = {}
+            )
+        }
+
+        item {
+            WeatherCard(
+                city = "Yogyakarta",
+                temperature = 29.0,
+                description = if (isEnglish) "Partly cloudy" else "Cerah berawan",
+                weatherIcon = "🌤️"
+            )
+        }
+
+        item {
+            Text(
+                text = if (isEnglish) "Hourly Forecast" else "Prakiraan Per Jam",
+                style = MaterialTheme.typography.titleLarge
+            )
+
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(6) { index ->
+                    HourlyForecastCard(
+                        time = "${10 + index}:00",
+                        temperature = 29.0 - index,
+                        weatherIcon = "🌤️"
                     )
                 }
             }
+        }
 
-            item {
-                WeatherCard(
-                    city = "Yogyakarta",
-                    temperature = 29.0,
-                    description = "Cerah berawan",
-                    weatherIcon = "🌤️"
-                )
-            }
+        item {
+            Text(
+                text = if (isEnglish) "Weather Information" else "Informasi Cuaca",
+                style = MaterialTheme.typography.titleLarge
+            )
 
-            item {
-                Text(
-                    text = "Prakiraan Per Jam",
-                    style = MaterialTheme.typography.titleLarge
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(6) { index ->
-                        HourlyForecastCard(
-                            time = "${10 + index}:00",
-                            temperature = 29.0 - index,
-                            weatherIcon = "🌤️"
-                        )
-                    }
-                }
-            }
-
-            item {
-                Text(
-                    text = "Informasi Cuaca",
-                    style = MaterialTheme.typography.titleLarge
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    WeatherInfoCard(
-                        title = "Kelembapan",
-                        value = "75%",
-                        icon = "💧",
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    WeatherInfoCard(
-                        title = "Kecepatan Angin",
-                        value = "12 km/j",
-                        icon = "💨",
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-
-            item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 WeatherInfoCard(
-                    title = "Kemungkinan Hujan",
-                    value = "40%",
-                    icon = "🌧️",
-                    modifier = Modifier.fillMaxWidth()
+                    title = if (isEnglish) "Humidity" else "Kelembapan",
+                    value = "75%",
+                    icon = "💧",
+                    modifier = Modifier.weight(1f)
                 )
-            }
 
-            item {
-                Text(
-                    text = "Prakiraan 7 Hari",
-                    style = MaterialTheme.typography.titleLarge
+                WeatherInfoCard(
+                    title = if (isEnglish) "Wind Speed" else "Kecepatan Angin",
+                    value = "12 km/j",
+                    icon = "💨",
+                    modifier = Modifier.weight(1f)
                 )
             }
+        }
 
-            items(7) { index ->
-                DailyForecastCard(
-                    day = "Hari ke-${index + 1}",
-                    weatherIcon = "🌤️",
-                    description = "Cerah berawan",
-                    temperatureMin = 23.0,
-                    temperatureMax = 30.0
-                )
-            }
+        item {
+            WeatherInfoCard(
+                title = if (isEnglish) "Rain Probability" else "Kemungkinan Hujan",
+                value = "40%",
+                icon = "🌧️",
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        item {
+            Text(
+                text = if (isEnglish) "7-Day Forecast" else "Prakiraan 7 Hari",
+                style = MaterialTheme.typography.titleLarge
+            )
+        }
+
+        items(7) { index ->
+            DailyForecastCard(
+                day = "Day ${index + 1}",
+                weatherIcon = "🌤️",
+                description = if (isEnglish) "Partly cloudy" else "Cerah berawan",
+                temperatureMin = 23.0,
+                temperatureMax = 30.0
+            )
         }
     }
 }
