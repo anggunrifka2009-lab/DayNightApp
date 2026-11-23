@@ -1,5 +1,8 @@
 package com.cuaca.daynight.ui.screen
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -12,32 +15,162 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.cuaca.daynight.data.location.LocationClient
+import com.cuaca.daynight.data.location.LocationHelper
 import com.cuaca.daynight.ui.components.DailyForecastCard
 import com.cuaca.daynight.ui.components.HourlyForecastCard
 import com.cuaca.daynight.ui.components.WeatherCard
 import com.cuaca.daynight.ui.components.WeatherInfoCard
 import com.cuaca.daynight.viewmodel.WeatherViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
-    weatherViewModel: WeatherViewModel = viewModel()
+    viewModel: WeatherViewModel = viewModel()
 ) {
-    val uiState by weatherViewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    val locationClient = remember {
+        LocationClient(context)
+    }
+
+    val locationHelper = remember {
+        LocationHelper(context)
+    }
+
+    var cityName by remember {
+        mutableStateOf("Mencari lokasi...")
+    }
+
+    var cityInput by remember {
+        mutableStateOf("")
+    }
+
+    var locationError by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    var searchError by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    var isGettingLocation by remember {
+        mutableStateOf(false)
+    }
+
+    var isSearchingCity by remember {
+        mutableStateOf(false)
+    }
+
+    fun getWeatherFromLocation() {
+        scope.launch {
+            try {
+                isGettingLocation = true
+                locationError = null
+
+                val location = locationClient.getCurrentLocation()
+
+                if (location != null) {
+                    cityName = locationHelper.getCityName(
+                        latitude = location.latitude,
+                        longitude = location.longitude
+                    )
+
+                    viewModel.fetchWeather(
+                        latitude = location.latitude,
+                        longitude = location.longitude
+                    )
+                } else {
+                    locationError =
+                        "Lokasi tidak ditemukan. Coba aktifkan GPS HP."
+                }
+
+            } catch (e: Exception) {
+                locationError =
+                    e.message ?: "Gagal mendapatkan lokasi."
+            } finally {
+                isGettingLocation = false
+            }
+        }
+    }
+
+    fun searchCity() {
+        if (cityInput.isBlank()) {
+            searchError = "Masukkan nama kota terlebih dahulu."
+            return
+        }
+
+        scope.launch {
+            try {
+                isSearchingCity = true
+                searchError = null
+
+                val coordinates =
+                    locationHelper.getCoordinatesByCity(cityInput.trim())
+
+                if (coordinates != null) {
+                    cityName = cityInput.trim()
+
+                    viewModel.fetchWeather(
+                        latitude = coordinates.first,
+                        longitude = coordinates.second
+                    )
+                } else {
+                    searchError = "Kota tidak ditemukan."
+                }
+
+            } catch (e: Exception) {
+                searchError = "Gagal mencari lokasi kota."
+            } finally {
+                isSearchingCity = false
+            }
+        }
+    }
+
+    val permissionLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestMultiplePermissions()
+        ) { permissions ->
+
+            val granted = permissions.values.any { it }
+
+            if (granted) {
+                getWeatherFromLocation()
+            } else {
+                locationError =
+                    "Izin lokasi diperlukan untuk menampilkan cuaca di sekitar kamu."
+            }
+        }
 
     LaunchedEffect(Unit) {
-        weatherViewModel.fetchWeather()
+        permissionLauncher.launch(
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+        )
     }
 
     LazyColumn(
@@ -61,8 +194,56 @@ fun HomeScreen(
             }
         }
 
+        item {
+            Column {
+                OutlinedTextField(
+                    value = cityInput,
+                    onValueChange = {
+                        cityInput = it
+                        searchError = null
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = {
+                        Text("Cari nama kota")
+                    },
+                    placeholder = {
+                        Text("Contoh: Jakarta")
+                    },
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = {
+                        searchCity()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isSearchingCity
+                ) {
+                    if (isSearchingCity) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.height(18.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Cari Cuaca")
+                    }
+                }
+
+                if (searchError != null) {
+                    Text(
+                        text = searchError!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                }
+            }
+        }
+
         when {
-            uiState.isLoading -> {
+            uiState.isLoading || isGettingLocation || isSearchingCity -> {
                 item {
                     Column(
                         modifier = Modifier
@@ -71,18 +252,54 @@ fun HomeScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         CircularProgressIndicator()
+
                         Spacer(modifier = Modifier.height(12.dp))
-                        Text("Memuat data cuaca...")
+
+                        Text(
+                            text = when {
+                                isGettingLocation -> "Mencari lokasi HP..."
+                                isSearchingCity -> "Mencari kota..."
+                                else -> "Memuat data cuaca..."
+                            }
+                        )
                     }
                 }
             }
 
-            uiState.error != null -> {
+            uiState.error != null && uiState.weather == null -> {
                 item {
                     Text(
                         text = "Gagal mengambil data: ${uiState.error}",
                         color = MaterialTheme.colorScheme.error
                     )
+                }
+            }
+
+            locationError != null && uiState.weather == null -> {
+                item {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = locationError!!,
+                            color = MaterialTheme.colorScheme.error
+                        )
+
+                        Button(
+                            onClick = {
+                                permissionLauncher.launch(
+                                    arrayOf(
+                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                                    )
+                                )
+                            },
+                            modifier = Modifier.padding(top = 12.dp)
+                        ) {
+                            Text("Izinkan Lokasi")
+                        }
+                    }
                 }
             }
 
@@ -92,7 +309,7 @@ fun HomeScreen(
 
                 item {
                     WeatherCard(
-                        city = "Yogyakarta",
+                        city = cityName,
                         temperature = current.temperature,
                         description = getWeatherDescription(
                             current.weatherCode
@@ -237,8 +454,6 @@ private fun getWeatherIcon(code: Int, isDay: Int): String {
         else -> "🌡️"
     }
 }
-
-// PREVIEW HOME SCREEN
 
 @Preview(
     showBackground = true,
