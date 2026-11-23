@@ -3,6 +3,7 @@ package com.cuaca.daynight.ui.screen
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -54,28 +55,16 @@ fun HomeScreen(
     val isEnglish = selectedLanguage == AppLanguage.ENGLISH
 
     var cityName by remember {
-        mutableStateOf("Mencari lokasi...")
+        mutableStateOf(
+            if (isEnglish) "Finding location..." else "Mencari lokasi..."
+        )
     }
 
-    var cityInput by remember {
-        mutableStateOf("")
-    }
-
-    var locationError by remember {
-        mutableStateOf<String?>(null)
-    }
-
-    var searchError by remember {
-        mutableStateOf<String?>(null)
-    }
-
-    var isGettingLocation by remember {
-        mutableStateOf(false)
-    }
-
-    var isSearchingCity by remember {
-        mutableStateOf(false)
-    }
+    var cityInput by remember { mutableStateOf("") }
+    var locationError by remember { mutableStateOf<String?>(null) }
+    var searchError by remember { mutableStateOf<String?>(null) }
+    var isGettingLocation by remember { mutableStateOf(false) }
+    var isSearchingCity by remember { mutableStateOf(false) }
 
     fun getWeatherFromLocation() {
         scope.launch {
@@ -187,6 +176,7 @@ fun HomeScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 16.dp),
         contentPadding = PaddingValues(vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -195,6 +185,7 @@ fun HomeScreen(
             Column {
                 Text(
                     text = "DayNight",
+                    color = MaterialTheme.colorScheme.onBackground,
                     style = MaterialTheme.typography.headlineMedium
                 )
 
@@ -204,6 +195,7 @@ fun HomeScreen(
                     } else {
                         "Informasi cuaca hari ini"
                     },
+                    color = MaterialTheme.colorScheme.onBackground,
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
@@ -220,6 +212,7 @@ fun HomeScreen(
             Column {
                 Text(
                     text = if (isEnglish) "Appearance Theme" else "Tema Tampilan",
+                    color = MaterialTheme.colorScheme.onBackground,
                     style = MaterialTheme.typography.titleMedium
                 )
 
@@ -282,7 +275,8 @@ fun HomeScreen(
                     if (isSearchingCity) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
                         )
                     } else {
                         Text(if (isEnglish) "Search Weather" else "Cari Cuaca")
@@ -332,7 +326,8 @@ fun HomeScreen(
                                 } else {
                                     "Memuat data cuaca..."
                                 }
-                            }
+                            },
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                     }
                 }
@@ -404,7 +399,12 @@ fun HomeScreen(
                 item {
                     Column {
                         Text(
-                            text = if (isEnglish) "Hourly Forecast" else "Prakiraan Per Jam",
+                            text = if (isEnglish) {
+                                "Hourly Forecast"
+                            } else {
+                                "Prakiraan Per Jam"
+                            },
+                            color = MaterialTheme.colorScheme.onBackground,
                             style = MaterialTheme.typography.titleLarge
                         )
 
@@ -434,7 +434,12 @@ fun HomeScreen(
                 item {
                     Column {
                         Text(
-                            text = if (isEnglish) "Weather Information" else "Informasi Cuaca",
+                            text = if (isEnglish) {
+                                "Weather Information"
+                            } else {
+                                "Informasi Cuaca"
+                            },
+                            color = MaterialTheme.colorScheme.onBackground,
                             style = MaterialTheme.typography.titleLarge
                         )
 
@@ -466,7 +471,11 @@ fun HomeScreen(
                         weather.hourly.precipitationProbability.firstOrNull() ?: 0
 
                     WeatherInfoCard(
-                        title = if (isEnglish) "Rain Probability" else "Kemungkinan Hujan",
+                        title = if (isEnglish) {
+                            "Rain Probability"
+                        } else {
+                            "Kemungkinan Hujan"
+                        },
                         value = "$rainChance%",
                         icon = "🌧️",
                         modifier = Modifier.fillMaxWidth()
@@ -475,7 +484,12 @@ fun HomeScreen(
 
                 item {
                     Text(
-                        text = if (isEnglish) "7-Day Forecast" else "Prakiraan 7 Hari",
+                        text = if (isEnglish) {
+                            "7-Day Forecast"
+                        } else {
+                            "Prakiraan 7 Hari"
+                        },
+                        color = MaterialTheme.colorScheme.onBackground,
                         style = MaterialTheme.typography.titleLarge
                     )
                 }
@@ -537,31 +551,53 @@ private fun getWeatherIcon(code: Int, isDay: Int): String {
     }
 }
 
+// PREVIEW
+
 @Preview(
     showBackground = true,
     showSystemUi = true,
-    name = "DayNight Home - Indonesia"
+    name = "DayNight - Indonesia Light"
 )
 @Composable
-fun HomeScreenPreview() {
-    DayNightTheme {
-        HomeScreenPreviewContent(
-            language = AppLanguage.INDONESIAN
-        )
+private fun HomeScreenIndonesianLightPreview() {
+    DayNightTheme(darkTheme = false) {
+        HomeScreenPreviewContent(AppLanguage.INDONESIAN)
     }
 }
 
 @Preview(
     showBackground = true,
     showSystemUi = true,
-    name = "DayNight Home - English"
+    name = "DayNight - Indonesia Dark"
 )
 @Composable
-fun HomeScreenEnglishPreview() {
-    DayNightTheme {
-        HomeScreenPreviewContent(
-            language = AppLanguage.ENGLISH
-        )
+private fun HomeScreenIndonesianDarkPreview() {
+    DayNightTheme(darkTheme = true) {
+        HomeScreenPreviewContent(AppLanguage.INDONESIAN)
+    }
+}
+
+@Preview(
+    showBackground = true,
+    showSystemUi = true,
+    name = "DayNight - English Light"
+)
+@Composable
+private fun HomeScreenEnglishLightPreview() {
+    DayNightTheme(darkTheme = false) {
+        HomeScreenPreviewContent(AppLanguage.ENGLISH)
+    }
+}
+
+@Preview(
+    showBackground = true,
+    showSystemUi = true,
+    name = "DayNight - English Dark"
+)
+@Composable
+private fun HomeScreenEnglishDarkPreview() {
+    DayNightTheme(darkTheme = true) {
+        HomeScreenPreviewContent(AppLanguage.ENGLISH)
     }
 }
 
@@ -569,114 +605,212 @@ fun HomeScreenEnglishPreview() {
 private fun HomeScreenPreviewContent(language: AppLanguage) {
     val isEnglish = language == AppLanguage.ENGLISH
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(vertical = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
     ) {
-        item {
-            Text(
-                text = "DayNight",
-                style = MaterialTheme.typography.headlineMedium
-            )
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            item {
+                Column {
+                    Text(
+                        text = "DayNight",
+                        color = MaterialTheme.colorScheme.onBackground,
+                        style = MaterialTheme.typography.headlineMedium
+                    )
 
-            Text(
-                text = if (isEnglish) {
-                    "Today's weather information"
-                } else {
-                    "Informasi cuaca hari ini"
-                },
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
-
-        item {
-            LanguageSelector(
-                selectedLanguage = language,
-                onLanguageSelected = {}
-            )
-        }
-
-        item {
-            WeatherCard(
-                city = "Yogyakarta",
-                temperature = 29.0,
-                description = if (isEnglish) "Partly cloudy" else "Cerah berawan",
-                weatherIcon = "🌤️"
-            )
-        }
-
-        item {
-            Text(
-                text = if (isEnglish) "Hourly Forecast" else "Prakiraan Per Jam",
-                style = MaterialTheme.typography.titleLarge
-            )
-
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(6) { index ->
-                    HourlyForecastCard(
-                        time = "${10 + index}:00",
-                        temperature = 29.0 - index,
-                        weatherIcon = "🌤️"
+                    Text(
+                        text = if (isEnglish) {
+                            "Today's weather information"
+                        } else {
+                            "Informasi cuaca hari ini"
+                        },
+                        color = MaterialTheme.colorScheme.onBackground,
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }
-        }
 
-        item {
-            Text(
-                text = if (isEnglish) "Weather Information" else "Informasi Cuaca",
-                style = MaterialTheme.typography.titleLarge
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                WeatherInfoCard(
-                    title = if (isEnglish) "Humidity" else "Kelembapan",
-                    value = "75%",
-                    icon = "💧",
-                    modifier = Modifier.weight(1f)
-                )
-
-                WeatherInfoCard(
-                    title = if (isEnglish) "Wind Speed" else "Kecepatan Angin",
-                    value = "12 km/j",
-                    icon = "💨",
-                    modifier = Modifier.weight(1f)
+            item {
+                LanguageSelector(
+                    selectedLanguage = language,
+                    onLanguageSelected = {}
                 )
             }
-        }
 
-        item {
-            WeatherInfoCard(
-                title = if (isEnglish) "Rain Probability" else "Kemungkinan Hujan",
-                value = "40%",
-                icon = "🌧️",
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+            item {
+                Column {
+                    Text(
+                        text = if (isEnglish) "Appearance Theme" else "Tema Tampilan",
+                        color = MaterialTheme.colorScheme.onBackground,
+                        style = MaterialTheme.typography.titleMedium
+                    )
 
-        item {
-            Text(
-                text = if (isEnglish) "7-Day Forecast" else "Prakiraan 7 Hari",
-                style = MaterialTheme.typography.titleLarge
-            )
-        }
+                    Spacer(modifier = Modifier.height(8.dp))
 
-        items(7) { index ->
-            DailyForecastCard(
-                day = "Day ${index + 1}",
-                weatherIcon = "🌤️",
-                description = if (isEnglish) "Partly cloudy" else "Cerah berawan",
-                temperatureMin = 23.0,
-                temperatureMax = 30.0
-            )
+                    SingleChoiceSegmentedButtonRow(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        val labels = if (isEnglish) {
+                            listOf("Light", "Dark", "System")
+                        } else {
+                            listOf("Terang", "Gelap", "Sistem")
+                        }
+
+                        labels.forEachIndexed { index, label ->
+                            SegmentedButton(
+                                selected = index == 0,
+                                onClick = {},
+                                shape = SegmentedButtonDefaults.itemShape(
+                                    index = index,
+                                    count = labels.size
+                                )
+                            ) {
+                                Text(label)
+                            }
+                        }
+                    }
+                }
+            }
+
+            item {
+                OutlinedTextField(
+                    value = "",
+                    onValueChange = {},
+                    modifier = Modifier.fillMaxWidth(),
+                    label = {
+                        Text(if (isEnglish) "Search city" else "Cari nama kota")
+                    },
+                    placeholder = {
+                        Text(if (isEnglish) "Example: Jakarta" else "Contoh: Jakarta")
+                    },
+                    singleLine = true
+                )
+            }
+
+            item {
+                Button(
+                    onClick = {},
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (isEnglish) "Search Weather" else "Cari Cuaca")
+                }
+            }
+
+            item {
+                WeatherCard(
+                    city = "Yogyakarta",
+                    temperature = 29.0,
+                    description = if (isEnglish) {
+                        "Partly cloudy"
+                    } else {
+                        "Cerah berawan"
+                    },
+                    weatherIcon = "🌤️"
+                )
+            }
+
+            item {
+                Text(
+                    text = if (isEnglish) "Hourly Forecast" else "Prakiraan Per Jam",
+                    color = MaterialTheme.colorScheme.onBackground,
+                    style = MaterialTheme.typography.titleLarge
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(6) { index ->
+                        HourlyForecastCard(
+                            time = "${10 + index}:00",
+                            temperature = 29.0 - index,
+                            weatherIcon = "🌤️"
+                        )
+                    }
+                }
+            }
+
+            item {
+                Text(
+                    text = if (isEnglish) {
+                        "Weather Information"
+                    } else {
+                        "Informasi Cuaca"
+                    },
+                    color = MaterialTheme.colorScheme.onBackground,
+                    style = MaterialTheme.typography.titleLarge
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    WeatherInfoCard(
+                        title = if (isEnglish) "Humidity" else "Kelembapan",
+                        value = "75%",
+                        icon = "💧",
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    WeatherInfoCard(
+                        title = if (isEnglish) "Wind Speed" else "Kecepatan Angin",
+                        value = "12 km/j",
+                        icon = "💨",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            item {
+                WeatherInfoCard(
+                    title = if (isEnglish) {
+                        "Rain Probability"
+                    } else {
+                        "Kemungkinan Hujan"
+                    },
+                    value = "40%",
+                    icon = "🌧️",
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            item {
+                Text(
+                    text = if (isEnglish) "7-Day Forecast" else "Prakiraan 7 Hari",
+                    color = MaterialTheme.colorScheme.onBackground,
+                    style = MaterialTheme.typography.titleLarge
+                )
+            }
+
+            items(7) { index ->
+                DailyForecastCard(
+                    day = if (isEnglish) {
+                        "Day ${index + 1}"
+                    } else {
+                        listOf(
+                            "Senin", "Selasa", "Rabu", "Kamis",
+                            "Jumat", "Sabtu", "Minggu"
+                        )[index]
+                    },
+                    weatherIcon = "🌤️",
+                    description = if (isEnglish) {
+                        "Partly cloudy"
+                    } else {
+                        "Cerah berawan"
+                    },
+                    temperatureMin = 23.0,
+                    temperatureMax = 30.0
+                )
+            }
         }
     }
 }

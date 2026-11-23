@@ -2,10 +2,10 @@ package com.cuaca.daynight.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.cuaca.daynight.ui.theme.DayNightTheme
 
 @Composable
 fun HourlyForecastCard(
@@ -38,6 +39,7 @@ fun HourlyForecastCard(
         ) {
             Text(
                 text = time,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium
             )
 
@@ -48,63 +50,64 @@ fun HourlyForecastCard(
 
             Text(
                 text = "${temperature.toInt()}°",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.titleMedium
             )
         }
     }
 }
 
-@Preview(
-    showBackground = true,
-    name = "Hourly Forecast Preview"
+private data class HourlyPreviewData(
+    val time: String,
+    val temperature: Double,
+    val icon: String
 )
+
 @Composable
-fun HourlyForecastCardPreview() {
-    MaterialTheme {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+private fun HourlyForecastPreviewContent() {
+    val forecasts = listOf(
+        HourlyPreviewData("10:00", 29.0, "☀️"),
+        HourlyPreviewData("11:00", 30.0, "🌤️"),
+        HourlyPreviewData("12:00", 31.0, "☁️"),
+        HourlyPreviewData("13:00", 28.0, "🌧️")
+    )
+
+    Column(
+        modifier = Modifier.padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "Prakiraan Per Jam",
+            color = MaterialTheme.colorScheme.onBackground,
+            style = MaterialTheme.typography.titleLarge
+        )
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = "Prakiraan Per Jam",
-                style = MaterialTheme.typography.titleLarge
-            )
-
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                item {
-                    HourlyForecastCard(
-                        time = "10:00",
-                        temperature = 29.0,
-                        weatherIcon = "☀️"
-                    )
-                }
-
-                item {
-                    HourlyForecastCard(
-                        time = "11:00",
-                        temperature = 30.0,
-                        weatherIcon = "🌤️"
-                    )
-                }
-
-                item {
-                    HourlyForecastCard(
-                        time = "12:00",
-                        temperature = 31.0,
-                        weatherIcon = "☁️"
-                    )
-                }
-
-                item {
-                    HourlyForecastCard(
-                        time = "13:00",
-                        temperature = 28.0,
-                        weatherIcon = "🌧️"
-                    )
-                }
+            items(forecasts) { forecast ->
+                HourlyForecastCard(
+                    time = forecast.time,
+                    temperature = forecast.temperature,
+                    weatherIcon = forecast.icon
+                )
             }
         }
+    }
+}
+
+@Preview(showBackground = true, name = "Hourly Forecast - Light")
+@Composable
+private fun HourlyForecastLightPreview() {
+    DayNightTheme(darkTheme = false) {
+        HourlyForecastPreviewContent()
+    }
+}
+
+@Preview(showBackground = true, name = "Hourly Forecast - Dark")
+@Composable
+private fun HourlyForecastDarkPreview() {
+    DayNightTheme(darkTheme = true) {
+        HourlyForecastPreviewContent()
     }
 }

@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.cuaca.daynight.ui.theme.DayNightTheme
 
 @Composable
 fun WeatherInfoCard(
@@ -42,49 +43,61 @@ fun WeatherInfoCard(
 
                 Text(
                     text = title,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
 
             Text(
                 text = value,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.headlineSmall
             )
         }
     }
 }
 
-@Preview(
-    showBackground = true,
-    name = "Weather Info Card Preview"
-)
 @Composable
-fun WeatherInfoCardPreview() {
-    MaterialTheme {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            WeatherInfoCard(
-                title = "Kelembapan",
-                value = "75%",
-                icon = "💧",
-                modifier = Modifier.fillMaxWidth()
-            )
+private fun WeatherInfoPreviewContent() {
+    Column(
+        modifier = Modifier.padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        WeatherInfoCard(
+            title = "Kelembapan",
+            value = "75%",
+            icon = "💧",
+            modifier = Modifier.fillMaxWidth()
+        )
 
-            WeatherInfoCard(
-                title = "Kecepatan Angin",
-                value = "12 km/j",
-                icon = "💨",
-                modifier = Modifier.fillMaxWidth()
-            )
+        WeatherInfoCard(
+            title = "Kecepatan Angin",
+            value = "12 km/j",
+            icon = "💨",
+            modifier = Modifier.fillMaxWidth()
+        )
 
-            WeatherInfoCard(
-                title = "Kemungkinan Hujan",
-                value = "40%",
-                icon = "🌧️",
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+        WeatherInfoCard(
+            title = "Kemungkinan Hujan",
+            value = "40%",
+            icon = "🌧️",
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Weather Info - Light")
+@Composable
+private fun WeatherInfoLightPreview() {
+    DayNightTheme(darkTheme = false) {
+        WeatherInfoPreviewContent()
+    }
+}
+
+@Preview(showBackground = true, name = "Weather Info - Dark")
+@Composable
+private fun WeatherInfoDarkPreview() {
+    DayNightTheme(darkTheme = true) {
+        WeatherInfoPreviewContent()
     }
 }

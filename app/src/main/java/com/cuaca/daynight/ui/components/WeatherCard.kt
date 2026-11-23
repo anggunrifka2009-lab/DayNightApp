@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.cuaca.daynight.ui.theme.DayNightTheme
 
 @Composable
 fun WeatherCard(
@@ -42,6 +43,7 @@ fun WeatherCard(
         ) {
             Text(
                 text = city,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
                 style = MaterialTheme.typography.titleLarge
             )
 
@@ -54,29 +56,43 @@ fun WeatherCard(
 
             Text(
                 text = "${temperature.toInt()}°",
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
                 style = MaterialTheme.typography.displayLarge
             )
 
             Text(
                 text = description,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
                 style = MaterialTheme.typography.titleMedium
             )
         }
     }
 }
 
-@Preview(
-    showBackground = true,
-    name = "Weather Card Preview"
-)
+@Preview(showBackground = true, name = "Weather Card - Light")
 @Composable
-fun WeatherCardPreview() {
-    MaterialTheme {
+private fun WeatherCardLightPreview() {
+    DayNightTheme(darkTheme = false) {
         WeatherCard(
             city = "Yogyakarta",
             temperature = 29.0,
             description = "Cerah berawan",
-            weatherIcon = "🌤️"
+            weatherIcon = "🌤️",
+            modifier = Modifier.padding(16.dp)
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Weather Card - Dark")
+@Composable
+private fun WeatherCardDarkPreview() {
+    DayNightTheme(darkTheme = true) {
+        WeatherCard(
+            city = "Yogyakarta",
+            temperature = 29.0,
+            description = "Cerah berawan",
+            weatherIcon = "🌤️",
+            modifier = Modifier.padding(16.dp)
         )
     }
 }
