@@ -4,7 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -21,11 +21,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.cuaca.daynight.data.preferences.SavedCity
+import com.cuaca.daynight.viewmodel.WeatherUiState
 
 @Composable
 fun ManageCitiesScreen(
     savedCities: List<SavedCity>,
     currentCityName: String,
+    weatherStates: Map<String, WeatherUiState> = emptyMap(),
     isEnglish: Boolean = false,
     onBackClick: () -> Unit,
     onCitySelected: (SavedCity) -> Unit,
@@ -118,23 +120,28 @@ fun ManageCitiesScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            items(
+            itemsIndexed(
                 items = savedCities,
-                key = { it.name }
-            ) { city ->
-                val isCurrent = city.name.equals(currentCityName, ignoreCase = true)
+                key = { _, city -> city.name }
+            ) { index, city ->
+                val isCurrentLocation = index == 0
 
-                val containerColor = if (isCurrent) {
+                val containerColor = if (isCurrentLocation) {
                     MaterialTheme.colorScheme.primaryContainer
                 } else {
                     MaterialTheme.colorScheme.surfaceVariant
                 }
 
-                val contentColor = if (isCurrent) {
+                val contentColor = if (isCurrentLocation) {
                     MaterialTheme.colorScheme.onPrimaryContainer
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 }
+
+                val weatherState = weatherStates[city.name]
+                val currentTemp = weatherState?.weather?.current?.temperature?.toInt()
+                val tempMax = weatherState?.weather?.daily?.temperatureMax?.firstOrNull()?.toInt()
+                val tempMin = weatherState?.weather?.daily?.temperatureMin?.firstOrNull()?.toInt()
 
                 Card(
                     modifier = Modifier
@@ -166,7 +173,7 @@ fun ManageCitiesScreen(
                                     fontWeight = FontWeight.SemiBold
                                 )
 
-                                if (isCurrent) {
+                                if (isCurrentLocation) {
                                     Icon(
                                         imageVector = Icons.Default.LocationOn,
                                         contentDescription = if (isEnglish) "Current Location" else "Lokasi saat ini",
@@ -176,34 +183,47 @@ fun ManageCitiesScreen(
                                 }
                             }
 
-                            Text(
-                                text = "33° / 24°",
-                                color = contentColor.copy(alpha = 0.75f),
-                                fontSize = 13.sp
-                            )
+                            if (isCurrentLocation) {
+                                Text(
+                                    text = if (isEnglish) "Current Location" else "Lokasi saat ini",
+                                    color = contentColor.copy(alpha = 0.75f),
+                                    fontSize = 13.sp
+                                )
+                            } else if (tempMax != null && tempMin != null) {
+                                Text(
+                                    text = "$tempMax° / $tempMin°",
+                                    color = contentColor.copy(alpha = 0.75f),
+                                    fontSize = 13.sp
+                                )
+                            }
                         }
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Text(
-                                text = "26°",
-                                color = contentColor,
-                                fontSize = 38.sp,
-                                fontWeight = FontWeight.Light
-                            )
-
-                            IconButton(
-                                onClick = { onDeleteCity(city) },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = if (isEnglish) "Delete" else "Hapus",
-                                    tint = contentColor.copy(alpha = 0.6f),
-                                    modifier = Modifier.size(20.dp)
+                            if (currentTemp != null) {
+                                Text(
+                                    text = "$currentTemp°",
+                                    color = contentColor,
+                                    fontSize = 38.sp,
+                                    fontWeight = FontWeight.Light
                                 )
+                            }
+
+                            // Lokasi saat ini (index == 0) TIDAK BISA DIHAPUS
+                            if (!isCurrentLocation) {
+                                IconButton(
+                                    onClick = { onDeleteCity(city) },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = if (isEnglish) "Delete" else "Hapus",
+                                        tint = contentColor.copy(alpha = 0.6f),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
                             }
                         }
                     }

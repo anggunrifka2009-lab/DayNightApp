@@ -9,6 +9,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 
@@ -24,27 +25,30 @@ class WeatherViewModel : ViewModel() {
 
     private val repository = WeatherRepository()
 
+    private val _weatherStates = MutableStateFlow<Map<String, WeatherUiState>>(emptyMap())
+    val weatherStates: StateFlow<Map<String, WeatherUiState>> = _weatherStates.asStateFlow()
+
     private val _uiState = MutableStateFlow(WeatherUiState())
     val uiState: StateFlow<WeatherUiState> = _uiState.asStateFlow()
 
-    private var lastLatitude = -7.7956
-    private var lastLongitude = 110.3695
-
     fun fetchWeather(
-        latitude: Double = -7.7956,
-        longitude: Double = 110.3695
+        cityName: String,
+        latitude: Double,
+        longitude: Double,
+        forceRefresh: Boolean = false
     ) {
-        lastLatitude = latitude
-        lastLongitude = longitude
+        val currentState = _weatherStates.value[cityName]
+        if (!forceRefresh && currentState?.weather != null && !currentState.isLoading) {
+            return
+        }
 
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(
-                isLoading = true,
-                error = null
-            )
+            _weatherStates.update { currentMap ->
+                val existing = currentMap[cityName] ?: WeatherUiState()
+                currentMap + (cityName to existing.copy(isLoading = true, error = null))
+            }
 
             try {
-                // Fetch weather & air quality in parallel
                 val weatherDeferred = async {
                     repository.getWeather(latitude = latitude, longitude = longitude)
                 }
@@ -59,25 +63,45 @@ class WeatherViewModel : ViewModel() {
                 val weatherResult = weatherDeferred.await()
                 val aqiResult = aqiDeferred.await()
 
-                _uiState.value = WeatherUiState(
+                val newState = WeatherUiState(
                     weather = weatherResult,
                     airQuality = aqiResult,
+                    isLoading = false,
+                    error = null,
                     lastUpdated = LocalDateTime.now()
                 )
 
+                _weatherStates.update { currentMap ->
+                    currentMap + (cityName to newState)
+                }
+
+                _uiState.value = newState
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
+                val errState = (currentState ?: WeatherUiState()).copy(
                     isLoading = false,
                     error = e.message ?: "Gagal mengambil data cuaca"
                 )
+                _weatherStates.update { currentMap ->
+                    currentMap + (cityName to errState)
+                }
+                _uiState.value = errState
             }
         }
     }
 
+    fun fetchWeather(latitude: Double = -7.7956, longitude: Double = 110.3695) {
+        fetchWeather("Default", latitude, longitude)
+    }
+
+    fun refreshWeather(cityName: String, latitude: Double, longitude: Double) {
+        fetchWeather(cityName, latitude, longitude, forceRefresh = true)
+    }
+
     fun refreshWeather() {
-        fetchWeather(
-            latitude = lastLatitude,
-            longitude = lastLongitude
-        )
+        val firstKey = _weatherStates.value.keys.firstOrNull() ?: "Default"
+        val state = _weatherStates.value[firstKey]
+        if (state?.weather != null) {
+            fetchWeather(firstKey, state.weather.latitude, state.weather.longitude, forceRefresh = true)
+        }
     }
 }
