@@ -370,28 +370,6 @@ fun HomeScreen(
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Normal
                     )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    // AQI CHIP
-                    Surface(
-                        shape = CircleShape,
-                        color = Color.White.copy(alpha = 0.2f)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text("🍃", fontSize = 13.sp)
-                            Text(
-                                text = "${if (isEnglish) "AQI" else "IKU"} 62",
-                                color = Color.White,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -437,7 +415,9 @@ fun HomeScreen(
 
                 // GRID DETAILS SECTION
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Max),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     WindCompassCard(
@@ -446,7 +426,7 @@ fun HomeScreen(
                         isEnglish = isEnglish,
                         modifier = Modifier
                             .weight(1f)
-                            .height(175.dp)
+                            .fillMaxHeight()
                     )
 
                     WeatherDetailsListCard(
@@ -458,73 +438,25 @@ fun HomeScreen(
                         isEnglish = isEnglish,
                         modifier = Modifier
                             .weight(1f)
-                            .height(175.dp)
+                            .fillMaxHeight()
                     )
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    val sunriseTime = weather.daily.sunrise.firstOrNull()?.substringAfter("T")?.take(5) ?: "05:08"
-                    val sunsetTime = weather.daily.sunset.firstOrNull()?.substringAfter("T")?.take(5) ?: "17:38"
+                val sunriseTime = weather.daily.sunrise.firstOrNull()?.substringAfter("T")?.take(5) ?: "05:08"
+                val sunsetTime = weather.daily.sunset.firstOrNull()?.substringAfter("T")?.take(5) ?: "17:38"
 
-                    SunArcCard(
-                        sunriseTime = sunriseTime,
-                        sunsetTime = sunsetTime,
-                        isEnglish = isEnglish,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(125.dp)
-                    )
-
-                    val visCardBg = if (isDark) Color(0x66294D7A) else Color(0xDDFFFFFF)
-                    val visTextColor = if (isDark) Color.White else Color(0xFF1E293B)
-                    val visSubtextColor = if (isDark) Color.White.copy(alpha = 0.85f) else Color(0xFF64748B)
-
-                    // Placeholder / Secondary Detail Card for Grid Symmetry
-                    Card(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(125.dp),
-                        shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = visCardBg)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .padding(16.dp)
-                                .fillMaxSize(),
-                            verticalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = if (isEnglish) "Visibility" else "Jarak Pandang",
-                                color = visSubtextColor,
-                                fontSize = 13.sp
-                            )
-                            Text(
-                                text = "10 km",
-                                color = visTextColor,
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text = if (isEnglish) "Clear view" else "Pandangan jelas",
-                                color = visSubtextColor,
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
-                }
-
-                // AIR QUALITY CARD
-                AirQualityCard(
-                    aqiValue = 62,
-                    isEnglish = isEnglish
+                SunArcCard(
+                    sunriseTime = sunriseTime,
+                    sunsetTime = sunsetTime,
+                    isEnglish = isEnglish,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(130.dp)
                 )
 
                 // FOOTER
                 Text(
-                    text = if (isEnglish) "Data provided by DayNight Weather" else "Data disediakan oleh DayNight Weather",
+                    text = if (isEnglish) "Data provided by Open-Meteo" else "Data disediakan oleh Open-Meteo",
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 12.dp, bottom = 8.dp),

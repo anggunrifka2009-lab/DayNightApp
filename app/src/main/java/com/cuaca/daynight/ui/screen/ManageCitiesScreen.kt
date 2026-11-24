@@ -177,7 +177,7 @@ fun ManageCitiesScreen(
                             }
 
                             Text(
-                                text = "${if (isEnglish) "AQI" else "IKU"} 62   33° / 24°",
+                                text = "33° / 24°",
                                 color = contentColor.copy(alpha = 0.75f),
                                 fontSize = 13.sp
                             )

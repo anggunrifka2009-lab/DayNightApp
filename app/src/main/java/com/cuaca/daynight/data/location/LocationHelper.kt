@@ -24,7 +24,8 @@ class LocationHelper(private val context: Context) {
                 geocoder.getFromLocation(latitude, longitude, 1) { addresses ->
                     val address = addresses.firstOrNull()
 
-                    val locationName = address?.locality
+                    val locationName = address?.subLocality
+                        ?: address?.locality
                         ?: address?.subAdminArea
                         ?: address?.adminArea
                         ?: "Lokasi Saya"
@@ -42,7 +43,8 @@ class LocationHelper(private val context: Context) {
                         1
                     )?.firstOrNull()
 
-                    val locationName = address?.locality
+                    val locationName = address?.subLocality
+                        ?: address?.locality
                         ?: address?.subAdminArea
                         ?: address?.adminArea
                         ?: "Lokasi Saya"
