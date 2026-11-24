@@ -2,8 +2,10 @@ package com.cuaca.daynight.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.cuaca.daynight.data.model.AirQualityResponse
 import com.cuaca.daynight.data.model.WeatherResponse
 import com.cuaca.daynight.data.repository.WeatherRepository
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,6 +14,7 @@ import java.time.LocalDateTime
 
 data class WeatherUiState(
     val weather: WeatherResponse? = null,
+    val airQuality: AirQualityResponse? = null,
     val isLoading: Boolean = false,
     val error: String? = null,
     val lastUpdated: LocalDateTime? = null
@@ -41,13 +44,24 @@ class WeatherViewModel : ViewModel() {
             )
 
             try {
-                val result = repository.getWeather(
-                    latitude = latitude,
-                    longitude = longitude
-                )
+                // Fetch weather & air quality in parallel
+                val weatherDeferred = async {
+                    repository.getWeather(latitude = latitude, longitude = longitude)
+                }
+                val aqiDeferred = async {
+                    try {
+                        repository.getAirQuality(latitude = latitude, longitude = longitude)
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+
+                val weatherResult = weatherDeferred.await()
+                val aqiResult = aqiDeferred.await()
 
                 _uiState.value = WeatherUiState(
-                    weather = result,
+                    weather = weatherResult,
+                    airQuality = aqiResult,
                     lastUpdated = LocalDateTime.now()
                 )
 

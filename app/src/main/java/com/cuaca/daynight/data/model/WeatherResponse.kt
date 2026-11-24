@@ -50,7 +50,13 @@ data class CurrentWeather(
     val pressure: Double? = 1014.0,
 
     @SerializedName("uv_index")
-    val uvIndex: Double? = 0.0
+    val uvIndex: Double? = 0.0,
+
+    @SerializedName("wind_gusts_10m")
+    val windGusts: Double? = null,
+
+    @SerializedName("dew_point_2m")
+    val dewPoint: Double? = null
 )
 
 data class HourlyWeather(
@@ -66,7 +72,10 @@ data class HourlyWeather(
     val weatherCode: List<Int>,
 
     @SerializedName("wind_speed_10m")
-    val windSpeed: List<Double>? = null
+    val windSpeed: List<Double>? = null,
+
+    @SerializedName("precipitation")
+    val precipitation: List<Double>? = null
 )
 
 data class DailyWeather(
@@ -82,5 +91,33 @@ data class DailyWeather(
     val temperatureMin: List<Double>,
 
     val sunrise: List<String>,
-    val sunset: List<String>
+    val sunset: List<String>,
+
+    @SerializedName("uv_index_max")
+    val uvIndexMax: List<Double>? = null,
+
+    @SerializedName("daylight_duration")
+    val daylightDuration: List<Double>? = null,
+
+    @SerializedName("sunshine_duration")
+    val sunshineDuration: List<Double>? = null
+)
+
+// Air Quality model (separate API)
+data class AirQualityResponse(
+    @SerializedName("hourly")
+    val hourly: AirQualityHourly
+)
+
+data class AirQualityHourly(
+    val time: List<String>,
+
+    @SerializedName("us_aqi")
+    val usAqi: List<Int?>,
+
+    @SerializedName("pm2_5")
+    val pm25: List<Double?>,
+
+    @SerializedName("pm10")
+    val pm10: List<Double?>
 )

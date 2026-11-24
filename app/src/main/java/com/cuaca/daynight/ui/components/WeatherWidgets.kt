@@ -17,11 +17,13 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 
 @Composable
 fun WindCompassCard(
     windSpeedKmH: Double,
     windDirectionDegrees: Double,
+    windGustsKmH: Double? = null,
     isEnglish: Boolean = false,
     modifier: Modifier = Modifier
 ) {
@@ -53,10 +55,18 @@ fun WindCompassCard(
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "${windSpeedKmH.toInt()}km/j",
+                    text = "${windSpeedKmH.toInt()} km/j",
                     color = subtextColor,
                     fontSize = 13.sp
                 )
+                // Wind Gusts line
+                if (windGustsKmH != null) {
+                    Text(
+                        text = "💨 ${if (isEnglish) "Gusts" else "Hembusan"} ${windGustsKmH.toInt()} km/j",
+                        color = subtextColor,
+                        fontSize = 12.sp
+                    )
+                }
             }
 
             Box(
@@ -127,6 +137,8 @@ fun WindCompassCard(
 fun SunArcCard(
     sunriseTime: String,
     sunsetTime: String,
+    daylightDurationSeconds: Double? = null,
+    sunshineDurationSeconds: Double? = null,
     isEnglish: Boolean = false,
     modifier: Modifier = Modifier
 ) {
@@ -137,6 +149,13 @@ fun SunArcCard(
 
     val fajarLabel = if (isEnglish) "Dawn" else "Fajar"
     val senjaLabel = if (isEnglish) "Dusk" else "Senja"
+
+    fun formatDuration(seconds: Double): String {
+        val totalMinutes = (seconds / 60).roundToInt()
+        val hours = totalMinutes / 60
+        val minutes = totalMinutes % 60
+        return if (isEnglish) "${hours}h ${minutes}m" else "${hours}j ${minutes}m"
+    }
 
     Card(
         modifier = modifier,
@@ -151,24 +170,52 @@ fun SunArcCard(
                 .fillMaxHeight(),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = "$sunriseTime $fajarLabel",
-                    color = textColor,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = "$sunsetTime $senjaLabel",
-                    color = subtextColor,
-                    fontSize = 13.sp
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "🌅 $sunriseTime $fajarLabel",
+                        color = textColor,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = "🌇 $sunsetTime $senjaLabel",
+                        color = subtextColor,
+                        fontSize = 12.sp
+                    )
+                }
+                if (daylightDurationSeconds != null) {
+                    Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = if (isEnglish) "Daylight" else "Panjang Hari",
+                            color = subtextColor,
+                            fontSize = 11.sp
+                        )
+                        Text(
+                            text = formatDuration(daylightDurationSeconds),
+                            color = textColor,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (sunshineDurationSeconds != null) {
+                            Text(
+                                text = "☀️ ${formatDuration(sunshineDurationSeconds)}",
+                                color = subtextColor,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                }
             }
 
             Canvas(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(55.dp)
+                    .height(45.dp)
                     .padding(horizontal = 8.dp)
             ) {
                 val width = size.width
@@ -213,6 +260,7 @@ fun WeatherDetailsListCard(
     uvIndex: Double,
     pressure: Double,
     rainChance: Int,
+    dewPoint: Double? = null,
     isEnglish: Boolean = false,
     modifier: Modifier = Modifier
 ) {
@@ -244,12 +292,14 @@ fun WeatherDetailsListCard(
                 labelColor = subtextColor,
                 valueColor = textColor
             )
-            DetailRow(
-                label = "UV",
-                value = "${uvIndex.toInt()}",
-                labelColor = subtextColor,
-                valueColor = textColor
-            )
+            if (dewPoint != null) {
+                DetailRow(
+                    label = if (isEnglish) "Dew Point" else "Titik Embun",
+                    value = "${dewPoint.toInt()}°",
+                    labelColor = subtextColor,
+                    valueColor = textColor
+                )
+            }
             DetailRow(
                 label = if (isEnglish) "Pressure" else "Tekanan",
                 value = "${pressure.toInt()}mbar",
@@ -294,50 +344,168 @@ private fun DetailRow(
 
 @Composable
 fun AirQualityCard(
-    aqiValue: Int = 62,
+    aqiValue: Int,
+    pm25: Double? = null,
+    pm10: Double? = null,
     isEnglish: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val cardBg = if (isDark) Color(0x66294D7A) else Color(0xDDFFFFFF)
-    val textColor = if (isDark) Color.White else Color(0xFF1E293B)
     val subtextColor = if (isDark) Color.White.copy(alpha = 0.85f) else Color(0xFF64748B)
+
+    val (aqiLabel, aqiColor) = getAqiInfo(aqiValue, isEnglish)
 
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = cardBg
-        )
+        colors = CardDefaults.cardColors(containerColor = cardBg)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("🍃", fontSize = 18.sp)
+                    Column {
+                        Text(
+                            text = "${if (isEnglish) "AQI" else "IKU"} $aqiValue – $aqiLabel",
+                            color = aqiColor,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (pm25 != null) {
+                            Text(
+                                text = "PM2.5: ${String.format("%.1f", pm25)} µg/m³",
+                                color = subtextColor,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+                if (pm10 != null) {
+                    Text(
+                        text = "PM10: ${pm10.roundToInt()} µg/m³",
+                        color = subtextColor,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun UvProtectionCard(
+    uvIndexMax: Double,
+    isEnglish: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val cardBg = if (isDark) Color(0x66294D7A) else Color(0xDDFFFFFF)
+    val subtextColor = if (isDark) Color.White.copy(alpha = 0.85f) else Color(0xFF64748B)
+
+    val uvInt = uvIndexMax.roundToInt()
+    val (uvLabel, uvColor, uvEmoji, uvAdvice) = getUvInfo(uvInt, isEnglish)
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = cardBg)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(uvEmoji, fontSize = 20.sp)
+                Column {
+                    Text(
+                        text = "UV $uvInt – $uvLabel",
+                        color = uvColor,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = uvAdvice,
+                        color = subtextColor,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SevereWeatherBanner(
+    weatherCode: Int,
+    isEnglish: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    val isSevere = weatherCode in 80..82 || weatherCode in 95..99
+    if (!isSevere) return
+
+    val isThunderstorm = weatherCode in 95..99
+    val bannerColor = if (isThunderstorm) Color(0xFFB71C1C) else Color(0xFFE65100)
+    val emoji = if (isThunderstorm) "⛈️" else "🌧️"
+    val title = if (isThunderstorm) {
+        if (isEnglish) "Thunderstorm Warning!" else "⚠️ Peringatan Badai Petir!"
+    } else {
+        if (isEnglish) "Heavy Rain Warning!" else "⚠️ Peringatan Hujan Lebat!"
+    }
+    val desc = if (isThunderstorm) {
+        if (isEnglish) "Thunderstorm forecast today. Avoid outdoor activities." else "Diprakirakan ada badai petir hari ini. Hindari aktivitas di luar ruangan."
+    } else {
+        if (isEnglish) "Heavy rain forecast today. Be careful when traveling." else "Diprakirakan hujan lebat hari ini. Hati-hati saat bepergian."
+    }
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = bannerColor)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text("🍃", fontSize = 16.sp)
+            Text(emoji, fontSize = 28.sp)
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    text = "${if (isEnglish) "AQI" else "IKU"} $aqiValue",
-                    color = textColor,
-                    fontSize = 15.sp,
+                    text = title,
+                    color = Color.White,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Bold
                 )
+                Text(
+                    text = desc,
+                    color = Color.White.copy(alpha = 0.9f),
+                    fontSize = 12.sp
+                )
             }
-
-            Text(
-                text = if (isEnglish) "Full air quality forecast ▸" else "Ramalan kualitas udara sepenuhnya ▸",
-                color = subtextColor,
-                fontSize = 13.sp
-            )
         }
     }
 }
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 private fun getWindDirectionText(degrees: Double, isEnglish: Boolean): String {
     val normDeg = (degrees % 360 + 360) % 360
@@ -350,5 +518,53 @@ private fun getWindDirectionText(degrees: Double, isEnglish: Boolean): String {
         normDeg in 247.5..292.5 -> if (isEnglish) "West" else "Barat"
         normDeg in 292.5..337.5 -> if (isEnglish) "North West" else "Barat Laut"
         else -> if (isEnglish) "North" else "Utara"
+    }
+}
+
+private fun getAqiInfo(aqi: Int, isEnglish: Boolean): Pair<String, Color> {
+    return when {
+        aqi <= 50 -> Pair(if (isEnglish) "Good" else "Baik", Color(0xFF4CAF50))
+        aqi <= 100 -> Pair(if (isEnglish) "Moderate" else "Sedang", Color(0xFFFFC107))
+        aqi <= 150 -> Pair(if (isEnglish) "Unhealthy for Sensitive" else "Tidak Sehat (Sensitif)", Color(0xFFFF9800))
+        aqi <= 200 -> Pair(if (isEnglish) "Unhealthy" else "Tidak Sehat", Color(0xFFF44336))
+        aqi <= 300 -> Pair(if (isEnglish) "Very Unhealthy" else "Sangat Tidak Sehat", Color(0xFF9C27B0))
+        else -> Pair(if (isEnglish) "Hazardous" else "Berbahaya", Color(0xFF7B1FA2))
+    }
+}
+
+private data class UvInfo(val label: String, val color: Color, val emoji: String, val advice: String)
+
+private fun getUvInfo(uv: Int, isEnglish: Boolean): UvInfo {
+    return when {
+        uv <= 2 -> UvInfo(
+            label = if (isEnglish) "Low" else "Rendah",
+            color = Color(0xFF4CAF50),
+            emoji = "🌤️",
+            advice = if (isEnglish) "No protection needed." else "Tidak perlu perlindungan khusus."
+        )
+        uv <= 5 -> UvInfo(
+            label = if (isEnglish) "Moderate" else "Sedang",
+            color = Color(0xFFFFC107),
+            emoji = "☀️",
+            advice = if (isEnglish) "Wear sunscreen if outdoors." else "Gunakan sunscreen jika beraktivitas di luar."
+        )
+        uv <= 7 -> UvInfo(
+            label = if (isEnglish) "High" else "Tinggi",
+            color = Color(0xFFFF9800),
+            emoji = "🔆",
+            advice = if (isEnglish) "Sunscreen + hat recommended." else "Pakai sunscreen & topi, kurangi paparan siang."
+        )
+        uv <= 10 -> UvInfo(
+            label = if (isEnglish) "Very High" else "Sangat Tinggi",
+            color = Color(0xFFF44336),
+            emoji = "🌡️",
+            advice = if (isEnglish) "Extra protection needed." else "Perlindungan ekstra diperlukan, hindari paparan."
+        )
+        else -> UvInfo(
+            label = if (isEnglish) "Extreme" else "Ekstrem",
+            color = Color(0xFF9C27B0),
+            emoji = "☢️",
+            advice = if (isEnglish) "Avoid outdoor activities!" else "Hindari aktivitas di luar ruangan!"
+        )
     }
 }

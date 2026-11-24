@@ -4,10 +4,8 @@ import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -293,7 +291,6 @@ fun HomeScreen(
                     )
                 }
 
-                // Center city title & dots
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -349,6 +346,13 @@ fun HomeScreen(
                 val dailyMax = weather.daily.temperatureMax.firstOrNull() ?: current.temperature
                 val dailyMin = weather.daily.temperatureMin.firstOrNull() ?: current.temperature
 
+                // ── BANNER PERINGATAN CUACA EKSTREM (#7) ──────────────────────
+                val todayWeatherCode = weather.daily.weatherCode.firstOrNull() ?: current.weatherCode
+                SevereWeatherBanner(
+                    weatherCode = todayWeatherCode,
+                    isEnglish = isEnglish
+                )
+
                 // HERO WEATHER SECTION
                 Column(
                     modifier = Modifier
@@ -394,17 +398,19 @@ fun HomeScreen(
                     isEnglish = isEnglish
                 )
 
-                // CARD 2: 24-HOUR FORECAST CHART
+                // CARD 2: 24-HOUR FORECAST CHART + CURAH HUJAN (#1)
                 val hourlyItems = weather.hourly.time.indices.take(12).map { idx ->
                     val timeStr = weather.hourly.time[idx].substringAfter("T").take(5)
                     val tempVal = weather.hourly.temperature[idx]
                     val icon = getWeatherIcon(weather.hourly.weatherCode[idx], current.isDay)
                     val wind = weather.hourly.windSpeed?.getOrNull(idx) ?: current.windSpeed
+                    val rain = weather.hourly.precipitation?.getOrNull(idx) ?: 0.0
                     HourlyItemData(
                         time = timeStr,
                         temp = tempVal,
                         icon = icon,
-                        windSpeed = "${String.format(Locale.US, "%.1f", wind)}km/j"
+                        windSpeed = "${String.format(Locale.US, "%.1f", wind)}km/j",
+                        precipitationMm = rain
                     )
                 }
 
@@ -423,6 +429,7 @@ fun HomeScreen(
                     WindCompassCard(
                         windSpeedKmH = current.windSpeed,
                         windDirectionDegrees = current.windDirection ?: 225.0,
+                        windGustsKmH = current.windGusts,
                         isEnglish = isEnglish,
                         modifier = Modifier
                             .weight(1f)
@@ -434,7 +441,8 @@ fun HomeScreen(
                         feelsLike = current.feelsLike,
                         uvIndex = current.uvIndex ?: 0.0,
                         pressure = current.pressure ?: 1014.0,
-                        rainChance = weather.hourly.precipitationProbability.firstOrNull() ?: 99,
+                        rainChance = weather.hourly.precipitationProbability.firstOrNull() ?: 0,
+                        dewPoint = current.dewPoint,
                         isEnglish = isEnglish,
                         modifier = Modifier
                             .weight(1f)
@@ -442,17 +450,49 @@ fun HomeScreen(
                     )
                 }
 
+                // KARTU FAJAR/SENJA + PANJANG HARI (#4)
                 val sunriseTime = weather.daily.sunrise.firstOrNull()?.substringAfter("T")?.take(5) ?: "05:08"
                 val sunsetTime = weather.daily.sunset.firstOrNull()?.substringAfter("T")?.take(5) ?: "17:38"
+                val daylightSec = weather.daily.daylightDuration?.firstOrNull()
+                val sunshineSec = weather.daily.sunshineDuration?.firstOrNull()
 
                 SunArcCard(
                     sunriseTime = sunriseTime,
                     sunsetTime = sunsetTime,
+                    daylightDurationSeconds = daylightSec,
+                    sunshineDurationSeconds = sunshineSec,
                     isEnglish = isEnglish,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(130.dp)
+                        .height(145.dp)
                 )
+
+                // KARTU UV PROTEKSI (#5)
+                val uvMax = weather.daily.uvIndexMax?.firstOrNull() ?: current.uvIndex ?: 0.0
+                UvProtectionCard(
+                    uvIndexMax = uvMax,
+                    isEnglish = isEnglish
+                )
+
+                // KARTU AQI REAL (#6)
+                val aqiData = uiState.airQuality
+                if (aqiData != null) {
+                    val currentAqi = aqiData.hourly.usAqi.firstOrNull { it != null } ?: 0
+                    val currentPm25 = aqiData.hourly.pm25.firstOrNull { it != null }
+                    val currentPm10 = aqiData.hourly.pm10.firstOrNull { it != null }
+                    AirQualityCard(
+                        aqiValue = currentAqi,
+                        pm25 = currentPm25,
+                        pm10 = currentPm10,
+                        isEnglish = isEnglish
+                    )
+                } else {
+                    // Fallback: tampilkan skeleton / placeholder
+                    AirQualityCard(
+                        aqiValue = 0,
+                        isEnglish = isEnglish
+                    )
+                }
 
                 // FOOTER
                 Text(

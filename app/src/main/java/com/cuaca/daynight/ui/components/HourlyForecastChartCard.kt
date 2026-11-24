@@ -20,12 +20,14 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 
 data class HourlyItemData(
     val time: String,
     val temp: Double,
     val icon: String,
-    val windSpeed: String
+    val windSpeed: String,
+    val precipitationMm: Double = 0.0  // ← NEW: curah hujan mm
 )
 
 @Composable
@@ -39,6 +41,7 @@ fun HourlyForecastChartCard(
     val textColor = if (isDark) Color.White else Color(0xFF1E293B)
     val subtextColor = if (isDark) Color.White.copy(alpha = 0.75f) else Color(0xFF64748B)
     val curveColor = if (isDark) Color(0xFFFFC107) else Color(0xFFF59E0B)
+    val rainColor = Color(0xFF42A5F5)
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -132,14 +135,12 @@ fun HourlyForecastChartCard(
                                 path.cubicTo(controlX1, controlY1, controlX2, controlY2, p2.x, p2.y)
                             }
 
-                            // Draw smooth curve
                             drawPath(
                                 path = path,
                                 color = curveColor,
                                 style = Stroke(width = 4f)
                             )
 
-                            // Highlight current point
                             drawCircle(
                                 color = textColor,
                                 radius = 6f,
@@ -150,7 +151,7 @@ fun HourlyForecastChartCard(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Icons, Wind speeds, and Times below curve
+                    // Icons, Rain mm, Wind speeds, Times
                     Row(
                         modifier = Modifier.padding(horizontal = 20.dp)
                     ) {
@@ -158,12 +159,28 @@ fun HourlyForecastChartCard(
                             Column(
                                 modifier = Modifier.width(64.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                                verticalArrangement = Arrangement.spacedBy(3.dp)
                             ) {
                                 Text(
                                     text = item.icon,
                                     fontSize = 22.sp
                                 )
+
+                                // Curah hujan (mm) – tampilkan jika > 0
+                                if (item.precipitationMm > 0.0) {
+                                    Text(
+                                        text = "${String.format(Locale.US, "%.1f", item.precipitationMm)} mm",
+                                        color = rainColor,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                } else {
+                                    Text(
+                                        text = "–",
+                                        color = subtextColor,
+                                        fontSize = 10.sp
+                                    )
+                                }
 
                                 Text(
                                     text = item.windSpeed,
