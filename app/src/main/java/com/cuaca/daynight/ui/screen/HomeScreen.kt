@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,6 +36,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: WeatherViewModel = viewModel(),
@@ -244,286 +246,284 @@ fun HomeScreen(
         )
     )
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(backgroundBrush)
-            .statusBarsPadding()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 18.dp)
-            .padding(top = 10.dp, bottom = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    PullToRefreshBox(
+        isRefreshing = uiState.isLoading,
+        onRefresh = { viewModel.refreshWeather() },
+        modifier = Modifier.fillMaxSize()
     ) {
-        // TOP HEADER BAR
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(backgroundBrush)
+                .statusBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 18.dp)
+                .padding(top = 10.dp, bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            IconButton(onClick = { isManagingCities = true }) {
-                Text(
-                    text = "+",
-                    color = Color.White,
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Light
-                )
-            }
-
-            // Center city title & dots
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+            // TOP HEADER BAR
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = cityName,
-                    color = Color.White,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = "📍 1 • • • •",
-                    color = Color.White.copy(alpha = 0.8f),
-                    fontSize = 11.sp
-                )
-            }
-
-            Box {
-                IconButton(onClick = { showMenu = true }) {
+                IconButton(onClick = { isManagingCities = true }) {
                     Text(
-                        text = "⋮",
+                        text = "+",
                         color = Color.White,
-                        fontSize = 24.sp
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Light
                     )
                 }
 
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false }
+                // Center city title & dots
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    DropdownMenuItem(
-                        text = { Text(if (isEnglish) "Settings" else "Pengaturan") },
-                        leadingIcon = { Text("⚙️") },
-                        onClick = {
-                            showMenu = false
-                            showSettingsDialog = true
-                        }
+                    Text(
+                        text = cityName,
+                        color = Color.White,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Medium
                     )
-                    DropdownMenuItem(
-                        text = { Text(if (isEnglish) "Refresh" else "Segarkan") },
-                        leadingIcon = { Text("⟳") },
-                        onClick = {
-                            showMenu = false
-                            viewModel.refreshWeather()
-                        }
+                    Text(
+                        text = "📍 1 • • • •",
+                        color = Color.White.copy(alpha = 0.8f),
+                        fontSize = 11.sp
                     )
+                }
+
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
+                        Text(
+                            text = "⋮",
+                            color = Color.White,
+                            fontSize = 24.sp
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(if (isEnglish) "Settings" else "Pengaturan") },
+                            leadingIcon = { Text("⚙️") },
+                            onClick = {
+                                showMenu = false
+                                showSettingsDialog = true
+                            }
+                        )
+                    }
                 }
             }
-        }
 
-        val weather = uiState.weather
-        if (weather != null) {
-            val current = weather.current
-            val dailyMax = weather.daily.temperatureMax.firstOrNull() ?: current.temperature
-            val dailyMin = weather.daily.temperatureMin.firstOrNull() ?: current.temperature
+            val weather = uiState.weather
+            if (weather != null) {
+                val current = weather.current
+                val dailyMax = weather.daily.temperatureMax.firstOrNull() ?: current.temperature
+                val dailyMin = weather.daily.temperatureMin.firstOrNull() ?: current.temperature
 
-            // HERO WEATHER SECTION
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    text = "${current.temperature.toInt()}°",
-                    color = Color.White,
-                    fontSize = 86.sp,
-                    fontWeight = FontWeight.ExtraLight
+                // HERO WEATHER SECTION
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = "${current.temperature.toInt()}°",
+                        color = Color.White,
+                        fontSize = 86.sp,
+                        fontWeight = FontWeight.ExtraLight
+                    )
+
+                    Text(
+                        text = "${getWeatherDescription(current.weatherCode, isEnglish)}  ${dailyMax.toInt()}° / ${dailyMin.toInt()}°",
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Normal
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // AQI CHIP
+                    Surface(
+                        shape = CircleShape,
+                        color = Color.White.copy(alpha = 0.2f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text("🍃", fontSize = 13.sp)
+                            Text(
+                                text = "${if (isEnglish) "AQI" else "IKU"} 62",
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // CARD 1: 5-DAY FORECAST
+                val dailyItems = weather.daily.time.indices.take(5).map { idx ->
+                    val dateStr = weather.daily.time[idx]
+                    val dayName = getDayLabel(dateStr, idx == 0, idx == 1, isEnglish)
+                    val desc = getWeatherDescription(weather.daily.weatherCode[idx], isEnglish)
+                    val icon = getWeatherIcon(weather.daily.weatherCode[idx], 1)
+                    DailyItemData(
+                        dayName = dayName,
+                        description = desc,
+                        weatherIcon = icon,
+                        tempMax = weather.daily.temperatureMax[idx],
+                        tempMin = weather.daily.temperatureMin[idx]
+                    )
+                }
+
+                FiveDayForecastCard(
+                    dailyItems = dailyItems,
+                    isEnglish = isEnglish
                 )
 
+                // CARD 2: 24-HOUR FORECAST CHART
+                val hourlyItems = weather.hourly.time.indices.take(12).map { idx ->
+                    val timeStr = weather.hourly.time[idx].substringAfter("T").take(5)
+                    val tempVal = weather.hourly.temperature[idx]
+                    val icon = getWeatherIcon(weather.hourly.weatherCode[idx], current.isDay)
+                    val wind = weather.hourly.windSpeed?.getOrNull(idx) ?: current.windSpeed
+                    HourlyItemData(
+                        time = timeStr,
+                        temp = tempVal,
+                        icon = icon,
+                        windSpeed = "${String.format(Locale.US, "%.1f", wind)}km/j"
+                    )
+                }
+
+                HourlyForecastChartCard(
+                    hourlyItems = hourlyItems,
+                    isEnglish = isEnglish
+                )
+
+                // GRID DETAILS SECTION
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    WindCompassCard(
+                        windSpeedKmH = current.windSpeed,
+                        windDirectionDegrees = current.windDirection ?: 225.0,
+                        isEnglish = isEnglish,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(175.dp)
+                    )
+
+                    WeatherDetailsListCard(
+                        humidity = current.humidity,
+                        feelsLike = current.feelsLike,
+                        uvIndex = current.uvIndex ?: 0.0,
+                        pressure = current.pressure ?: 1014.0,
+                        rainChance = weather.hourly.precipitationProbability.firstOrNull() ?: 99,
+                        isEnglish = isEnglish,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(175.dp)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    val sunriseTime = weather.daily.sunrise.firstOrNull()?.substringAfter("T")?.take(5) ?: "05:08"
+                    val sunsetTime = weather.daily.sunset.firstOrNull()?.substringAfter("T")?.take(5) ?: "17:38"
+
+                    SunArcCard(
+                        sunriseTime = sunriseTime,
+                        sunsetTime = sunsetTime,
+                        isEnglish = isEnglish,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(125.dp)
+                    )
+
+                    // Placeholder / Secondary Detail Card for Grid Symmetry
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(125.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0x66294D7A))
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .fillMaxSize(),
+                            verticalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = if (isEnglish) "Visibility" else "Jarak Pandang",
+                                color = Color.White.copy(alpha = 0.85f),
+                                fontSize = 13.sp
+                            )
+                            Text(
+                                text = "10 km",
+                                color = Color.White,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = if (isEnglish) "Clear view" else "Pandangan jelas",
+                                color = Color.White.copy(alpha = 0.75f),
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+
+                // AIR QUALITY CARD
+                AirQualityCard(
+                    aqiValue = 62,
+                    isEnglish = isEnglish
+                )
+
+                // FOOTER
                 Text(
-                    text = "${getWeatherDescription(current.weatherCode, isEnglish)}  ${dailyMax.toInt()}° / ${dailyMin.toInt()}°",
-                    color = Color.White.copy(alpha = 0.9f),
-                    fontSize = 18.sp,
+                    text = if (isEnglish) "Data provided by DayNight Weather" else "Data disediakan oleh DayNight Weather",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp, bottom = 8.dp),
+                    color = Color.White.copy(alpha = 0.6f),
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Normal
                 )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // AQI CHIP
-                Surface(
-                    shape = CircleShape,
-                    color = Color.White.copy(alpha = 0.2f)
+            } else if (uiState.isLoading || isGettingLocation) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(300.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Text("🍃", fontSize = 13.sp)
-                        Text(
-                            text = "${if (isEnglish) "AQI" else "IKU"} 62",
-                            color = Color.White,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
+                    CircularProgressIndicator(color = Color.White)
                 }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // CARD 1: 5-DAY FORECAST
-            val dailyItems = weather.daily.time.indices.take(5).map { idx ->
-                val dateStr = weather.daily.time[idx]
-                val dayName = getDayLabel(dateStr, idx == 0, idx == 1, isEnglish)
-                val desc = getWeatherDescription(weather.daily.weatherCode[idx], isEnglish)
-                val icon = getWeatherIcon(weather.daily.weatherCode[idx], 1)
-                DailyItemData(
-                    dayName = dayName,
-                    description = desc,
-                    weatherIcon = icon,
-                    tempMax = weather.daily.temperatureMax[idx],
-                    tempMin = weather.daily.temperatureMin[idx]
-                )
-            }
-
-            FiveDayForecastCard(
-                dailyItems = dailyItems,
-                isEnglish = isEnglish
-            )
-
-            // CARD 2: 24-HOUR FORECAST CHART
-            val hourlyItems = weather.hourly.time.indices.take(12).map { idx ->
-                val timeStr = weather.hourly.time[idx].substringAfter("T").take(5)
-                val tempVal = weather.hourly.temperature[idx]
-                val icon = getWeatherIcon(weather.hourly.weatherCode[idx], current.isDay)
-                val wind = weather.hourly.windSpeed?.getOrNull(idx) ?: current.windSpeed
-                HourlyItemData(
-                    time = timeStr,
-                    temp = tempVal,
-                    icon = icon,
-                    windSpeed = "${String.format(Locale.US, "%.1f", wind)}km/j"
-                )
-            }
-
-            HourlyForecastChartCard(
-                hourlyItems = hourlyItems,
-                isEnglish = isEnglish
-            )
-
-            // GRID DETAILS SECTION
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                WindCompassCard(
-                    windSpeedKmH = current.windSpeed,
-                    windDirectionDegrees = current.windDirection ?: 225.0,
-                    isEnglish = isEnglish,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(175.dp)
-                )
-
-                WeatherDetailsListCard(
-                    humidity = current.humidity,
-                    feelsLike = current.feelsLike,
-                    uvIndex = current.uvIndex ?: 0.0,
-                    pressure = current.pressure ?: 1014.0,
-                    rainChance = weather.hourly.precipitationProbability.firstOrNull() ?: 99,
-                    isEnglish = isEnglish,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(175.dp)
-                )
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                val sunriseTime = weather.daily.sunrise.firstOrNull()?.substringAfter("T")?.take(5) ?: "05:08"
-                val sunsetTime = weather.daily.sunset.firstOrNull()?.substringAfter("T")?.take(5) ?: "17:38"
-
-                SunArcCard(
-                    sunriseTime = sunriseTime,
-                    sunsetTime = sunsetTime,
-                    isEnglish = isEnglish,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(125.dp)
-                )
-
-                // Placeholder / Secondary Detail Card for Grid Symmetry
+            } else if (uiState.error != null) {
                 Card(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(125.dp),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0x66294D7A))
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxSize(),
-                        verticalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = if (isEnglish) "Visibility" else "Jarak Pandang",
-                            color = Color.White.copy(alpha = 0.85f),
-                            fontSize = 13.sp
-                        )
-                        Text(
-                            text = "10 km",
-                            color = Color.White,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = if (isEnglish) "Clear view" else "Pandangan jelas",
-                            color = Color.White.copy(alpha = 0.75f),
-                            fontSize = 12.sp
-                        )
-                    }
+                    Text(
+                        text = uiState.error!!,
+                        modifier = Modifier.padding(16.dp),
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
                 }
-            }
-
-            // AIR QUALITY CARD
-            AirQualityCard(
-                aqiValue = 62,
-                isEnglish = isEnglish
-            )
-
-            // FOOTER
-            Text(
-                text = if (isEnglish) "Data provided by DayNight Weather" else "Data disediakan oleh DayNight Weather",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp, bottom = 8.dp),
-                color = Color.White.copy(alpha = 0.6f),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Normal
-            )
-        } else if (uiState.isLoading || isGettingLocation) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(300.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(color = Color.White)
-            }
-        } else if (uiState.error != null) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-            ) {
-                Text(
-                    text = uiState.error!!,
-                    modifier = Modifier.padding(16.dp),
-                    color = MaterialTheme.colorScheme.onErrorContainer
-                )
             }
         }
     }
