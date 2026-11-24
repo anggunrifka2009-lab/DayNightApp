@@ -2,24 +2,21 @@ package com.cuaca.daynight.ui.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlin.math.cos
-import kotlin.math.sin
 
 @Composable
 fun WindCompassCard(
@@ -28,13 +25,18 @@ fun WindCompassCard(
     isEnglish: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val cardBg = if (isDark) Color(0x66294D7A) else Color(0xDDFFFFFF)
+    val textColor = if (isDark) Color.White else Color(0xFF1E293B)
+    val subtextColor = if (isDark) Color.White.copy(alpha = 0.8f) else Color(0xFF64748B)
+
     val directionText = getWindDirectionText(windDirectionDegrees, isEnglish)
 
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0x66294D7A)
+            containerColor = cardBg
         )
     ) {
         Column(
@@ -46,13 +48,13 @@ fun WindCompassCard(
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     text = directionText,
-                    color = Color.White,
+                    color = textColor,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
                     text = "${windSpeedKmH.toInt()}km/j",
-                    color = Color.White.copy(alpha = 0.8f),
+                    color = subtextColor,
                     fontSize = 13.sp
                 )
             }
@@ -63,7 +65,6 @@ fun WindCompassCard(
                     .height(95.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // Dial markers (U, T, S, B or N, E, S, W)
                 val labelNorth = if (isEnglish) "N" else "U"
                 val labelEast = if (isEnglish) "E" else "T"
                 val labelSouth = "S"
@@ -71,25 +72,25 @@ fun WindCompassCard(
 
                 Text(
                     text = labelNorth,
-                    color = Color.White.copy(alpha = 0.8f),
+                    color = subtextColor,
                     fontSize = 11.sp,
                     modifier = Modifier.align(Alignment.TopCenter)
                 )
                 Text(
                     text = labelSouth,
-                    color = Color.White.copy(alpha = 0.8f),
+                    color = subtextColor,
                     fontSize = 11.sp,
                     modifier = Modifier.align(Alignment.BottomCenter)
                 )
                 Text(
                     text = labelWest,
-                    color = Color.White.copy(alpha = 0.8f),
+                    color = subtextColor,
                     fontSize = 11.sp,
                     modifier = Modifier.align(Alignment.CenterStart)
                 )
                 Text(
                     text = labelEast,
-                    color = Color.White.copy(alpha = 0.8f),
+                    color = subtextColor,
                     fontSize = 11.sp,
                     modifier = Modifier.align(Alignment.CenterEnd)
                 )
@@ -100,14 +101,12 @@ fun WindCompassCard(
                     val radius = size.minDimension / 2f
                     val center = Offset(radius, radius)
 
-                    // Dial Outer Ring
                     drawCircle(
-                        color = Color.White.copy(alpha = 0.25f),
+                        color = subtextColor.copy(alpha = 0.4f),
                         radius = radius - 2f,
                         style = Stroke(width = 2f)
                     )
 
-                    // Compass Pointer Arrow rotated to wind direction
                     rotate(degrees = windDirectionDegrees.toFloat(), pivot = center) {
                         val path = Path().apply {
                             moveTo(center.x, center.y - radius + 10f)
@@ -116,7 +115,7 @@ fun WindCompassCard(
                             lineTo(center.x + 6f, center.y + 12f)
                             close()
                         }
-                        drawPath(path = path, color = Color.White)
+                        drawPath(path = path, color = textColor)
                     }
                 }
             }
@@ -131,6 +130,11 @@ fun SunArcCard(
     isEnglish: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val cardBg = if (isDark) Color(0x66294D7A) else Color(0xDDFFFFFF)
+    val textColor = if (isDark) Color.White else Color(0xFF1E293B)
+    val subtextColor = if (isDark) Color.White.copy(alpha = 0.8f) else Color(0xFF64748B)
+
     val fajarLabel = if (isEnglish) "Dawn" else "Fajar"
     val senjaLabel = if (isEnglish) "Dusk" else "Senja"
 
@@ -138,7 +142,7 @@ fun SunArcCard(
         modifier = modifier,
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0x66294D7A)
+            containerColor = cardBg
         )
     ) {
         Column(
@@ -150,13 +154,13 @@ fun SunArcCard(
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     text = "$sunriseTime $fajarLabel",
-                    color = Color.White,
+                    color = textColor,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
                     text = "$sunsetTime $senjaLabel",
-                    color = Color.White.copy(alpha = 0.8f),
+                    color = subtextColor,
                     fontSize = 13.sp
                 )
             }
@@ -170,7 +174,6 @@ fun SunArcCard(
                 val width = size.width
                 val height = size.height
 
-                // Draw dashed/solid sun trajectory arc
                 val path = Path().apply {
                     moveTo(0f, height * 0.9f)
                     quadraticTo(
@@ -181,23 +184,20 @@ fun SunArcCard(
 
                 drawPath(
                     path = path,
-                    color = Color.White.copy(alpha = 0.4f),
+                    color = subtextColor.copy(alpha = 0.5f),
                     style = Stroke(width = 3f, cap = StrokeCap.Round)
                 )
 
-                // Sun point along arc (at ~35% progression as example)
                 val sunX = width * 0.35f
                 val sunY = height * 0.35f
 
-                // Glow ring
                 drawCircle(
-                    color = Color.White.copy(alpha = 0.3f),
+                    color = textColor.copy(alpha = 0.3f),
                     radius = 12f,
                     center = Offset(sunX, sunY)
                 )
-                // Sun core
                 drawCircle(
-                    color = Color.White,
+                    color = textColor,
                     radius = 6f,
                     center = Offset(sunX, sunY)
                 )
@@ -216,11 +216,16 @@ fun WeatherDetailsListCard(
     isEnglish: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val cardBg = if (isDark) Color(0x66294D7A) else Color(0xDDFFFFFF)
+    val textColor = if (isDark) Color.White else Color(0xFF1E293B)
+    val subtextColor = if (isDark) Color.White.copy(alpha = 0.85f) else Color(0xFF64748B)
+
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0x66294D7A)
+            containerColor = cardBg
         )
     ) {
         Column(
@@ -229,23 +234,33 @@ fun WeatherDetailsListCard(
         ) {
             DetailRow(
                 label = if (isEnglish) "Humidity" else "Kelembaban",
-                value = "$humidity%"
+                value = "$humidity%",
+                labelColor = subtextColor,
+                valueColor = textColor
             )
             DetailRow(
                 label = if (isEnglish) "Feels like" else "Terasa seperti",
-                value = "${feelsLike.toInt()}°"
+                value = "${feelsLike.toInt()}°",
+                labelColor = subtextColor,
+                valueColor = textColor
             )
             DetailRow(
                 label = "UV",
-                value = "${uvIndex.toInt()}"
+                value = "${uvIndex.toInt()}",
+                labelColor = subtextColor,
+                valueColor = textColor
             )
             DetailRow(
                 label = if (isEnglish) "Pressure" else "Tekanan",
-                value = "${pressure.toInt()}mbar"
+                value = "${pressure.toInt()}mbar",
+                labelColor = subtextColor,
+                valueColor = textColor
             )
             DetailRow(
                 label = if (isEnglish) "Rain chance" else "Peluang hujan",
-                value = "$rainChance%"
+                value = "$rainChance%",
+                labelColor = subtextColor,
+                valueColor = textColor
             )
         }
     }
@@ -254,7 +269,9 @@ fun WeatherDetailsListCard(
 @Composable
 private fun DetailRow(
     label: String,
-    value: String
+    value: String,
+    labelColor: Color,
+    valueColor: Color
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -263,12 +280,12 @@ private fun DetailRow(
     ) {
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.85f),
+            color = labelColor,
             fontSize = 13.sp
         )
         Text(
             text = value,
-            color = Color.White,
+            color = valueColor,
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold
         )
@@ -281,11 +298,16 @@ fun AirQualityCard(
     isEnglish: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val cardBg = if (isDark) Color(0x66294D7A) else Color(0xDDFFFFFF)
+    val textColor = if (isDark) Color.White else Color(0xFF1E293B)
+    val subtextColor = if (isDark) Color.White.copy(alpha = 0.85f) else Color(0xFF64748B)
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0x66294D7A)
+            containerColor = cardBg
         )
     ) {
         Row(
@@ -302,7 +324,7 @@ fun AirQualityCard(
                 Text("🍃", fontSize = 16.sp)
                 Text(
                     text = "${if (isEnglish) "AQI" else "IKU"} $aqiValue",
-                    color = Color.White,
+                    color = textColor,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -310,7 +332,7 @@ fun AirQualityCard(
 
             Text(
                 text = if (isEnglish) "Full air quality forecast ▸" else "Ramalan kualitas udara sepenuhnya ▸",
-                color = Color.White.copy(alpha = 0.85f),
+                color = subtextColor,
                 fontSize = 13.sp
             )
         }

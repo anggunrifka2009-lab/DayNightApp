@@ -16,6 +16,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,11 +34,17 @@ fun HourlyForecastChartCard(
     isEnglish: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val cardBg = if (isDark) Color(0x66294D7A) else Color(0xDDFFFFFF)
+    val textColor = if (isDark) Color.White else Color(0xFF1E293B)
+    val subtextColor = if (isDark) Color.White.copy(alpha = 0.75f) else Color(0xFF64748B)
+    val curveColor = if (isDark) Color(0xFFFFC107) else Color(0xFFF59E0B)
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0x66294D7A)
+            containerColor = cardBg
         )
     ) {
         Column(
@@ -55,7 +62,7 @@ fun HourlyForecastChartCard(
                 )
                 Text(
                     text = if (isEnglish) "24-hour forecast" else "Ramalan 24 jam",
-                    color = Color.White.copy(alpha = 0.9f),
+                    color = textColor,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium
                 )
@@ -63,7 +70,6 @@ fun HourlyForecastChartCard(
 
             if (hourlyItems.isNotEmpty()) {
                 val scrollState = rememberScrollState()
-                val itemWidthPx = 70f
                 val chartHeightDp = 50.dp
 
                 val minTemp = hourlyItems.minOf { it.temp }
@@ -84,7 +90,7 @@ fun HourlyForecastChartCard(
                             ) {
                                 Text(
                                     text = "${item.temp.toInt()}°",
-                                    color = Color.White,
+                                    color = textColor,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -108,7 +114,6 @@ fun HourlyForecastChartCard(
                         val points = hourlyItems.mapIndexed { index, item ->
                             val x = index * stepX
                             val normalizedTemp = (item.temp - minTemp) / tempRange
-                            // Invert Y axis: higher temp -> lower Y
                             val y = (heightPx * 0.85f) - (normalizedTemp * heightPx * 0.7f)
                             Offset(x, y.toFloat())
                         }
@@ -127,16 +132,16 @@ fun HourlyForecastChartCard(
                                 path.cubicTo(controlX1, controlY1, controlX2, controlY2, p2.x, p2.y)
                             }
 
-                            // Draw smooth yellow curve
+                            // Draw smooth curve
                             drawPath(
                                 path = path,
-                                color = Color(0xFFFFC107),
+                                color = curveColor,
                                 style = Stroke(width = 4f)
                             )
 
-                            // Highlight current point (first point)
+                            // Highlight current point
                             drawCircle(
-                                color = Color.White,
+                                color = textColor,
                                 radius = 6f,
                                 center = points.first()
                             )
@@ -162,7 +167,7 @@ fun HourlyForecastChartCard(
 
                                 Text(
                                     text = item.windSpeed,
-                                    color = Color.White.copy(alpha = 0.75f),
+                                    color = subtextColor,
                                     fontSize = 11.sp
                                 )
 
@@ -172,7 +177,7 @@ fun HourlyForecastChartCard(
                                     } else {
                                         item.time
                                     },
-                                    color = Color.White.copy(alpha = 0.9f),
+                                    color = textColor,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Normal
                                 )

@@ -10,6 +10,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -17,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -238,13 +243,25 @@ fun HomeScreen(
         )
     }
 
-    val backgroundBrush = Brush.verticalGradient(
-        colors = listOf(
-            Color(0xFF5A84C1),
-            Color(0xFF4B75AF),
-            Color(0xFF3B629B)
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+
+    val backgroundBrush = if (isDark) {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color(0xFF1B2A3D),
+                Color(0xFF131E2C),
+                Color(0xFF0C141F)
+            )
         )
-    )
+    } else {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color(0xFF5A84C1),
+                Color(0xFF4B75AF),
+                Color(0xFF3B629B)
+            )
+        )
+    }
 
     PullToRefreshBox(
         isRefreshing = uiState.isLoading,
@@ -268,11 +285,11 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = { isManagingCities = true }) {
-                    Text(
-                        text = "+",
-                        color = Color.White,
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Light
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = if (isEnglish) "Add City" else "Tambah Kota",
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp)
                     )
                 }
 
@@ -296,10 +313,11 @@ fun HomeScreen(
 
                 Box {
                     IconButton(onClick = { showMenu = true }) {
-                        Text(
-                            text = "⋮",
-                            color = Color.White,
-                            fontSize = 24.sp
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = if (isEnglish) "Menu" else "Menu",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
 
@@ -309,7 +327,13 @@ fun HomeScreen(
                     ) {
                         DropdownMenuItem(
                             text = { Text(if (isEnglish) "Settings" else "Pengaturan") },
-                            leadingIcon = { Text("⚙️") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Settings,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            },
                             onClick = {
                                 showMenu = false
                                 showSettingsDialog = true
@@ -454,13 +478,17 @@ fun HomeScreen(
                             .height(125.dp)
                     )
 
+                    val visCardBg = if (isDark) Color(0x66294D7A) else Color(0xDDFFFFFF)
+                    val visTextColor = if (isDark) Color.White else Color(0xFF1E293B)
+                    val visSubtextColor = if (isDark) Color.White.copy(alpha = 0.85f) else Color(0xFF64748B)
+
                     // Placeholder / Secondary Detail Card for Grid Symmetry
                     Card(
                         modifier = Modifier
                             .weight(1f)
                             .height(125.dp),
                         shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0x66294D7A))
+                        colors = CardDefaults.cardColors(containerColor = visCardBg)
                     ) {
                         Column(
                             modifier = Modifier
@@ -470,18 +498,18 @@ fun HomeScreen(
                         ) {
                             Text(
                                 text = if (isEnglish) "Visibility" else "Jarak Pandang",
-                                color = Color.White.copy(alpha = 0.85f),
+                                color = visSubtextColor,
                                 fontSize = 13.sp
                             )
                             Text(
                                 text = "10 km",
-                                color = Color.White,
+                                color = visTextColor,
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
                                 text = if (isEnglish) "Clear view" else "Pandangan jelas",
-                                color = Color.White.copy(alpha = 0.75f),
+                                color = visSubtextColor,
                                 fontSize = 12.sp
                             )
                         }

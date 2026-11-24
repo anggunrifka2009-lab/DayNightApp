@@ -7,12 +7,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,18 +34,10 @@ fun ManageCitiesScreen(
 ) {
     var searchInput by remember { mutableStateOf("") }
 
-    val backgroundBrush = Brush.verticalGradient(
-        colors = listOf(
-            Color(0xFF161C24),
-            Color(0xFF0F141A),
-            Color(0xFF0D1016)
-        )
-    )
-
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(backgroundBrush)
+            .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
             .padding(horizontal = 18.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -50,14 +46,14 @@ fun ManageCitiesScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp),
+                .padding(vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBackClick) {
-                Text(
-                    text = "←",
-                    color = Color.White,
-                    fontSize = 24.sp
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = if (isEnglish) "Back" else "Kembali",
+                    tint = MaterialTheme.colorScheme.onBackground
                 )
             }
 
@@ -65,8 +61,8 @@ fun ManageCitiesScreen(
 
             Text(
                 text = if (isEnglish) "Manage cities" else "Kelola kota",
-                color = Color.White,
-                fontSize = 26.sp,
+                color = MaterialTheme.colorScheme.onBackground,
+                fontSize = 24.sp,
                 fontWeight = FontWeight.SemiBold
             )
         }
@@ -78,21 +74,25 @@ fun ManageCitiesScreen(
             modifier = Modifier.fillMaxWidth(),
             shape = CircleShape,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color(0xFF1E2630),
-                unfocusedContainerColor = Color(0xFF1E2630),
-                focusedBorderColor = Color.Transparent,
-                unfocusedBorderColor = Color.Transparent,
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+                focusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
             ),
             placeholder = {
                 Text(
                     text = if (isEnglish) "Enter location" else "Masukkan lokasi",
-                    color = Color.White.copy(alpha = 0.45f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 )
             },
             leadingIcon = {
-                Text("🔍", fontSize = 16.sp)
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = if (isEnglish) "Search" else "Cari",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             },
             trailingIcon = {
                 if (searchInput.isNotBlank()) {
@@ -102,7 +102,11 @@ fun ManageCitiesScreen(
                             searchInput = ""
                         }
                     ) {
-                        Text("➕", color = Color.White)
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = if (isEnglish) "Add" else "Tambah",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             },
@@ -120,13 +124,25 @@ fun ManageCitiesScreen(
             ) { city ->
                 val isCurrent = city.name.equals(currentCityName, ignoreCase = true)
 
+                val containerColor = if (isCurrent) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                }
+
+                val contentColor = if (isCurrent) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
+
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onCitySelected(city) },
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (isCurrent) Color(0xFF5394E6) else Color(0x994874AA)
+                        containerColor = containerColor
                     )
                 ) {
                     Row(
@@ -141,43 +157,53 @@ fun ManageCitiesScreen(
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Text(
                                     text = city.name,
-                                    color = Color.White,
+                                    color = contentColor,
                                     fontSize = 20.sp,
                                     fontWeight = FontWeight.SemiBold
                                 )
 
                                 if (isCurrent) {
-                                    Text("📍", fontSize = 16.sp)
+                                    Icon(
+                                        imageVector = Icons.Default.LocationOn,
+                                        contentDescription = if (isEnglish) "Current Location" else "Lokasi saat ini",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
                                 }
                             }
 
                             Text(
                                 text = "${if (isEnglish) "AQI" else "IKU"} 62   33° / 24°",
-                                color = Color.White.copy(alpha = 0.8f),
+                                color = contentColor.copy(alpha = 0.75f),
                                 fontSize = 13.sp
                             )
                         }
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Text(
                                 text = "26°",
-                                color = Color.White,
-                                fontSize = 42.sp,
+                                color = contentColor,
+                                fontSize = 38.sp,
                                 fontWeight = FontWeight.Light
                             )
 
                             IconButton(
                                 onClick = { onDeleteCity(city) },
-                                modifier = Modifier.size(28.dp)
+                                modifier = Modifier.size(32.dp)
                             ) {
-                                Text("✕", color = Color.White.copy(alpha = 0.6f), fontSize = 16.sp)
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = if (isEnglish) "Delete" else "Hapus",
+                                    tint = contentColor.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
                         }
                     }

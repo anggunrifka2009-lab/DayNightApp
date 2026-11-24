@@ -1,6 +1,5 @@
 package com.cuaca.daynight.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -9,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,11 +28,18 @@ fun FiveDayForecastCard(
     onMoreDetailsClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val cardBg = if (isDark) Color(0x66294D7A) else Color(0xDDFFFFFF)
+    val textColor = if (isDark) Color.White else Color(0xFF1E293B)
+    val subtextColor = if (isDark) Color.White.copy(alpha = 0.75f) else Color(0xFF64748B)
+    val buttonBg = if (isDark) Color.White.copy(alpha = 0.2f) else Color(0xFF3B82F6).copy(alpha = 0.12f)
+    val buttonContent = if (isDark) Color.White else Color(0xFF1D4ED8)
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0x66294D7A)
+            containerColor = cardBg
         )
     ) {
         Column(
@@ -52,7 +59,7 @@ fun FiveDayForecastCard(
                     Text("🗓️", fontSize = 16.sp)
                     Text(
                         text = if (isEnglish) "5-day forecast" else "Ramalan 5 hari",
-                        color = Color.White.copy(alpha = 0.9f),
+                        color = textColor,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium
                     )
@@ -64,7 +71,7 @@ fun FiveDayForecastCard(
                 ) {
                     Text(
                         text = if (isEnglish) "More details ▸" else "Rincian lainnya ▸",
-                        color = Color.White.copy(alpha = 0.75f),
+                        color = subtextColor,
                         fontSize = 13.sp
                     )
                 }
@@ -91,7 +98,7 @@ fun FiveDayForecastCard(
                             )
                             Text(
                                 text = "${item.dayName}  ${item.description}",
-                                color = Color.White,
+                                color = textColor,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Normal
                             )
@@ -99,7 +106,7 @@ fun FiveDayForecastCard(
 
                         Text(
                             text = "${item.tempMax.toInt()}° / ${item.tempMin.toInt()}°",
-                            color = Color.White,
+                            color = textColor,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -117,8 +124,8 @@ fun FiveDayForecastCard(
                     .height(46.dp),
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White.copy(alpha = 0.2f),
-                    contentColor = Color.White
+                    containerColor = buttonBg,
+                    contentColor = buttonContent
                 )
             ) {
                 Text(
