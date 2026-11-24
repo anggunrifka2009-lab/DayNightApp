@@ -4,31 +4,36 @@ import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cuaca.daynight.data.location.LocationClient
 import com.cuaca.daynight.data.location.LocationHelper
 import com.cuaca.daynight.data.preferences.AppLanguage
+import com.cuaca.daynight.data.preferences.SavedCity
+import com.cuaca.daynight.data.preferences.SavedCityPreferences
 import com.cuaca.daynight.data.preferences.ThemeMode
 import com.cuaca.daynight.data.preferences.ThemePreferences
-import com.cuaca.daynight.ui.components.DailyForecastCard
-import com.cuaca.daynight.ui.components.HourlyForecastCard
-import com.cuaca.daynight.ui.components.LanguageSelector
-import com.cuaca.daynight.ui.components.WeatherCard
-import com.cuaca.daynight.ui.components.WeatherInfoCard
-import com.cuaca.daynight.ui.theme.DayNightTheme
+import com.cuaca.daynight.ui.components.*
 import com.cuaca.daynight.viewmodel.WeatherViewModel
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Composable
 fun HomeScreen(
@@ -44,125 +49,97 @@ fun HomeScreen(
     val locationClient = remember { LocationClient(context) }
     val locationHelper = remember { LocationHelper(context) }
 
-    val themePreferences = remember {
-        ThemePreferences(context.applicationContext)
+    val themePreferences = remember { ThemePreferences(context.applicationContext) }
+    val savedCityPreferences = remember { SavedCityPreferences(context.applicationContext) }
+
+    val savedCities = remember {
+        mutableStateListOf<SavedCity>().apply {
+            val loaded = savedCityPreferences.getSavedCities()
+            if (loaded.isNotEmpty()) {
+                addAll(loaded)
+            } else {
+                val defaultCity = SavedCity("Kerten", -7.5614, 110.7852)
+                add(defaultCity)
+                savedCityPreferences.saveCities(listOf(defaultCity))
+            }
+        }
     }
 
-    val themeMode by themePreferences.themeMode.collectAsState(
-        initial = ThemeMode.SYSTEM
-    )
-
+    val themeMode by themePreferences.themeMode.collectAsState(initial = ThemeMode.SYSTEM)
     val isEnglish = selectedLanguage == AppLanguage.ENGLISH
 
     var cityName by remember {
-        mutableStateOf(
-            if (isEnglish) "Finding location..." else "Mencari lokasi..."
-        )
+        mutableStateOf(savedCities.firstOrNull()?.name ?: if (isEnglish) "Location" else "Lokasi")
     }
 
-    var cityInput by remember { mutableStateOf("") }
+    var isManagingCities by remember { mutableStateOf(false) }
     var locationError by remember { mutableStateOf<String?>(null) }
-    var searchError by remember { mutableStateOf<String?>(null) }
     var isGettingLocation by remember { mutableStateOf(false) }
-    var isSearchingCity by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
 
     fun getWeatherFromLocation() {
         scope.launch {
             try {
                 isGettingLocation = true
                 locationError = null
-
                 val location = locationClient.getCurrentLocation()
 
                 if (location != null) {
-                    cityName = locationHelper.getCityName(
+                    val locName = locationHelper.getCityName(
                         latitude = location.latitude,
                         longitude = location.longitude
                     )
+                    cityName = locName
+
+                    val exists = savedCities.any { it.name.equals(locName, ignoreCase = true) }
+                    if (!exists) {
+                        val currentCity = SavedCity(locName, location.latitude, location.longitude)
+                        savedCities.add(0, currentCity)
+                        savedCityPreferences.saveCities(savedCities.toList())
+                    }
 
                     viewModel.fetchWeather(
                         latitude = location.latitude,
                         longitude = location.longitude
                     )
                 } else {
-                    locationError = if (isEnglish) {
-                        "Location not found. Please enable GPS."
-                    } else {
-                        "Lokasi tidak ditemukan. Coba aktifkan GPS HP."
-                    }
+                    locationError = if (isEnglish) "Location not found." else "Lokasi tidak ditemukan."
                 }
             } catch (e: Exception) {
-                locationError = if (isEnglish) {
-                    "Failed to get device location."
-                } else {
-                    e.message ?: "Gagal mendapatkan lokasi."
-                }
+                locationError = e.message ?: "Gagal mendapatkan lokasi."
             } finally {
                 isGettingLocation = false
             }
         }
     }
 
-    fun searchCity() {
-        if (cityInput.isBlank()) {
-            searchError = if (isEnglish) {
-                "Please enter a city name."
-            } else {
-                "Masukkan nama kota terlebih dahulu."
-            }
-            return
-        }
-
+    fun addAndSelectCity(name: String) {
         scope.launch {
             try {
-                isSearchingCity = true
-                searchError = null
-
-                val coordinates =
-                    locationHelper.getCoordinatesByCity(cityInput.trim())
-
-                if (coordinates != null) {
-                    cityName = cityInput.trim()
-
-                    viewModel.fetchWeather(
-                        latitude = coordinates.first,
-                        longitude = coordinates.second
-                    )
-                } else {
-                    searchError = if (isEnglish) {
-                        "City not found."
-                    } else {
-                        "Kota tidak ditemukan."
+                val coords = locationHelper.getCoordinatesByCity(name)
+                if (coords != null) {
+                    val newCity = SavedCity(name, coords.first, coords.second)
+                    if (savedCities.none { it.name.equals(name, ignoreCase = true) }) {
+                        savedCities.add(newCity)
+                        savedCityPreferences.saveCities(savedCities.toList())
                     }
+                    cityName = name
+                    viewModel.fetchWeather(coords.first, coords.second)
+                    isManagingCities = false
                 }
-            } catch (e: Exception) {
-                searchError = if (isEnglish) {
-                    "Failed to search for the city."
-                } else {
-                    "Gagal mencari lokasi kota."
-                }
-            } finally {
-                isSearchingCity = false
+            } catch (_: Exception) {
             }
         }
     }
 
-    val permissionLauncher =
-        rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.RequestMultiplePermissions()
-        ) { permissions ->
-            val granted = permissions.values.any { it }
-
-            if (granted) {
-                getWeatherFromLocation()
-            } else {
-                locationError = if (isEnglish) {
-                    "Location permission is required to show local weather."
-                } else {
-                    "Izin lokasi diperlukan untuk menampilkan cuaca di sekitar kamu."
-                }
-            }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        if (permissions.values.any { it }) {
+            getWeatherFromLocation()
         }
+    }
 
     LaunchedEffect(Unit) {
         permissionLauncher.launch(
@@ -173,344 +150,400 @@ fun HomeScreen(
         )
     }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(vertical = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item {
-            Column {
-                Text(
-                    text = "DayNight",
-                    color = MaterialTheme.colorScheme.onBackground,
-                    style = MaterialTheme.typography.headlineMedium
-                )
-
-                Text(
-                    text = if (isEnglish) {
-                        "Today's weather information"
-                    } else {
-                        "Informasi cuaca hari ini"
-                    },
-                    color = MaterialTheme.colorScheme.onBackground,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+    if (isManagingCities) {
+        ManageCitiesScreen(
+            savedCities = savedCities,
+            currentCityName = cityName,
+            isEnglish = isEnglish,
+            onBackClick = { isManagingCities = false },
+            onCitySelected = { city ->
+                cityName = city.name
+                viewModel.fetchWeather(city.latitude, city.longitude)
+                isManagingCities = false
+            },
+            onAddCity = { name -> addAndSelectCity(name) },
+            onDeleteCity = { city ->
+                savedCities.remove(city)
+                savedCityPreferences.saveCities(savedCities.toList())
             }
-        }
+        )
+        return
+    }
 
-        item {
-            LanguageSelector(
-                selectedLanguage = selectedLanguage,
-                onLanguageSelected = onLanguageSelected
-            )
-        }
-
-        item {
-            Column {
+    // SETTINGS DIALOG
+    if (showSettingsDialog) {
+        AlertDialog(
+            onDismissRequest = { showSettingsDialog = false },
+            title = {
                 Text(
-                    text = if (isEnglish) "Appearance Theme" else "Tema Tampilan",
-                    color = MaterialTheme.colorScheme.onBackground,
-                    style = MaterialTheme.typography.titleMedium
+                    text = if (isEnglish) "Settings" else "Pengaturan",
+                    style = MaterialTheme.typography.titleLarge
                 )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                val modes = listOf(
-                    ThemeMode.LIGHT to if (isEnglish) "Light" else "Terang",
-                    ThemeMode.DARK to if (isEnglish) "Dark" else "Gelap",
-                    ThemeMode.SYSTEM to if (isEnglish) "System" else "Sistem"
-                )
-
-                SingleChoiceSegmentedButtonRow(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    modes.forEachIndexed { index, (mode, label) ->
-                        SegmentedButton(
-                            selected = themeMode == mode,
-                            onClick = {
-                                scope.launch {
-                                    themePreferences.saveTheme(mode)
-                                }
-                            },
-                            shape = SegmentedButtonDefaults.itemShape(
-                                index = index,
-                                count = modes.size
-                            )
-                        ) {
-                            Text(label)
-                        }
-                    }
-                }
-            }
-        }
-
-        item {
-            Column {
-                OutlinedTextField(
-                    value = cityInput,
-                    onValueChange = {
-                        cityInput = it
-                        searchError = null
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = {
-                        Text(if (isEnglish) "Search city" else "Cari nama kota")
-                    },
-                    placeholder = {
-                        Text(if (isEnglish) "Example: Jakarta" else "Contoh: Jakarta")
-                    },
-                    singleLine = true
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Button(
-                    onClick = { searchCity() },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isSearchingCity
-                ) {
-                    if (isSearchingCity) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                    } else {
-                        Text(if (isEnglish) "Search Weather" else "Cari Cuaca")
-                    }
-                }
-
-                if (searchError != null) {
-                    Text(
-                        text = searchError!!,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 6.dp)
-                    )
-                }
-            }
-        }
-
-        when {
-            uiState.isLoading || isGettingLocation || isSearchingCity -> {
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(40.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        CircularProgressIndicator()
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(
-                            text = when {
-                                isGettingLocation -> if (isEnglish) {
-                                    "Getting device location..."
-                                } else {
-                                    "Mencari lokasi HP..."
-                                }
-
-                                isSearchingCity -> if (isEnglish) {
-                                    "Searching city..."
-                                } else {
-                                    "Mencari kota..."
-                                }
-
-                                else -> if (isEnglish) {
-                                    "Loading weather data..."
-                                } else {
-                                    "Memuat data cuaca..."
-                                }
-                            },
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                    }
-                }
-            }
-
-            uiState.error != null && uiState.weather == null -> {
-                item {
-                    Text(
-                        text = if (isEnglish) {
-                            "Failed to get weather data: ${uiState.error}"
-                        } else {
-                            "Gagal mengambil data: ${uiState.error}"
-                        },
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-
-            locationError != null && uiState.weather == null -> {
-                item {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = locationError!!,
-                            color = MaterialTheme.colorScheme.error
+                            text = if (isEnglish) "Appearance" else "Tema Tampilan",
+                            style = MaterialTheme.typography.titleSmall
                         )
 
-                        Button(
-                            onClick = {
-                                permissionLauncher.launch(
-                                    arrayOf(
-                                        Manifest.permission.ACCESS_FINE_LOCATION,
-                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                        val modes = listOf(
+                            ThemeMode.LIGHT to if (isEnglish) "Light" else "Terang",
+                            ThemeMode.DARK to if (isEnglish) "Dark" else "Gelap",
+                            ThemeMode.SYSTEM to if (isEnglish) "System" else "Sistem"
+                        )
+
+                        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                            modes.forEachIndexed { index, (mode, label) ->
+                                SegmentedButton(
+                                    selected = themeMode == mode,
+                                    onClick = {
+                                        scope.launch { themePreferences.saveTheme(mode) }
+                                    },
+                                    shape = SegmentedButtonDefaults.itemShape(
+                                        index = index,
+                                        count = modes.size
                                     )
-                                )
-                            },
-                            modifier = Modifier.padding(top = 12.dp)
-                        ) {
-                            Text(
-                                if (isEnglish) "Grant Location Permission"
-                                else "Izinkan Lokasi"
-                            )
-                        }
-                    }
-                }
-            }
-
-            uiState.weather != null -> {
-                val weather = uiState.weather!!
-                val current = weather.current
-
-                item {
-                    WeatherCard(
-                        city = cityName,
-                        temperature = current.temperature,
-                        description = getWeatherDescription(
-                            current.weatherCode,
-                            isEnglish
-                        ),
-                        weatherIcon = getWeatherIcon(
-                            current.weatherCode,
-                            current.isDay
-                        )
-                    )
-                }
-
-                item {
-                    Column {
-                        Text(
-                            text = if (isEnglish) {
-                                "Hourly Forecast"
-                            } else {
-                                "Prakiraan Per Jam"
-                            },
-                            color = MaterialTheme.colorScheme.onBackground,
-                            style = MaterialTheme.typography.titleLarge
-                        )
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(
-                                weather.hourly.time.indices.take(8).toList()
-                            ) { index ->
-                                HourlyForecastCard(
-                                    time = weather.hourly.time[index]
-                                        .substringAfter("T")
-                                        .take(5),
-                                    temperature = weather.hourly.temperature[index],
-                                    weatherIcon = getWeatherIcon(
-                                        weather.hourly.weatherCode[index],
-                                        current.isDay
-                                    )
-                                )
+                                ) {
+                                    Text(label)
+                                }
                             }
                         }
                     }
-                }
 
-                item {
-                    Column {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(
-                            text = if (isEnglish) {
-                                "Weather Information"
-                            } else {
-                                "Informasi Cuaca"
-                            },
-                            color = MaterialTheme.colorScheme.onBackground,
-                            style = MaterialTheme.typography.titleLarge
+                            text = if (isEnglish) "Language" else "Bahasa",
+                            style = MaterialTheme.typography.titleSmall
                         )
 
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            WeatherInfoCard(
-                                title = if (isEnglish) "Humidity" else "Kelembapan",
-                                value = "${current.humidity}%",
-                                icon = "💧",
-                                modifier = Modifier.weight(1f)
-                            )
-
-                            WeatherInfoCard(
-                                title = if (isEnglish) "Wind Speed" else "Kecepatan Angin",
-                                value = "${current.windSpeed} km/j",
-                                icon = "💨",
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
+                        LanguageSelector(
+                            selectedLanguage = selectedLanguage,
+                            onLanguageSelected = onLanguageSelected
+                        )
                     }
                 }
-
-                item {
-                    val rainChance =
-                        weather.hourly.precipitationProbability.firstOrNull() ?: 0
-
-                    WeatherInfoCard(
-                        title = if (isEnglish) {
-                            "Rain Probability"
-                        } else {
-                            "Kemungkinan Hujan"
-                        },
-                        value = "$rainChance%",
-                        icon = "🌧️",
-                        modifier = Modifier.fillMaxWidth()
-                    )
+            },
+            confirmButton = {
+                TextButton(onClick = { showSettingsDialog = false }) {
+                    Text(if (isEnglish) "Done" else "Selesai")
                 }
+            },
+            shape = RoundedCornerShape(24.dp)
+        )
+    }
 
-                item {
+    val backgroundBrush = Brush.verticalGradient(
+        colors = listOf(
+            Color(0xFF5A84C1),
+            Color(0xFF4B75AF),
+            Color(0xFF3B629B)
+        )
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(backgroundBrush)
+            .statusBarsPadding()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 18.dp)
+            .padding(top = 10.dp, bottom = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // TOP HEADER BAR
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { isManagingCities = true }) {
+                Text(
+                    text = "+",
+                    color = Color.White,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Light
+                )
+            }
+
+            // Center city title & dots
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = cityName,
+                    color = Color.White,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "📍 1 • • • •",
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 11.sp
+                )
+            }
+
+            Box {
+                IconButton(onClick = { showMenu = true }) {
                     Text(
-                        text = if (isEnglish) {
-                            "7-Day Forecast"
-                        } else {
-                            "Prakiraan 7 Hari"
-                        },
-                        color = MaterialTheme.colorScheme.onBackground,
-                        style = MaterialTheme.typography.titleLarge
+                        text = "⋮",
+                        color = Color.White,
+                        fontSize = 24.sp
                     )
                 }
 
-                items(weather.daily.time.indices.toList()) { index ->
-                    DailyForecastCard(
-                        day = weather.daily.time[index],
-                        weatherIcon = getWeatherIcon(
-                            weather.daily.weatherCode[index],
-                            1
-                        ),
-                        description = getWeatherDescription(
-                            weather.daily.weatherCode[index],
-                            isEnglish
-                        ),
-                        temperatureMin = weather.daily.temperatureMin[index],
-                        temperatureMax = weather.daily.temperatureMax[index]
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(if (isEnglish) "Settings" else "Pengaturan") },
+                        leadingIcon = { Text("⚙️") },
+                        onClick = {
+                            showMenu = false
+                            showSettingsDialog = true
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(if (isEnglish) "Refresh" else "Segarkan") },
+                        leadingIcon = { Text("⟳") },
+                        onClick = {
+                            showMenu = false
+                            viewModel.refreshWeather()
+                        }
                     )
                 }
             }
         }
+
+        val weather = uiState.weather
+        if (weather != null) {
+            val current = weather.current
+            val dailyMax = weather.daily.temperatureMax.firstOrNull() ?: current.temperature
+            val dailyMin = weather.daily.temperatureMin.firstOrNull() ?: current.temperature
+
+            // HERO WEATHER SECTION
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = "${current.temperature.toInt()}°",
+                    color = Color.White,
+                    fontSize = 86.sp,
+                    fontWeight = FontWeight.ExtraLight
+                )
+
+                Text(
+                    text = "${getWeatherDescription(current.weatherCode, isEnglish)}  ${dailyMax.toInt()}° / ${dailyMin.toInt()}°",
+                    color = Color.White.copy(alpha = 0.9f),
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Normal
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // AQI CHIP
+                Surface(
+                    shape = CircleShape,
+                    color = Color.White.copy(alpha = 0.2f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text("🍃", fontSize = 13.sp)
+                        Text(
+                            text = "${if (isEnglish) "AQI" else "IKU"} 62",
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // CARD 1: 5-DAY FORECAST
+            val dailyItems = weather.daily.time.indices.take(5).map { idx ->
+                val dateStr = weather.daily.time[idx]
+                val dayName = getDayLabel(dateStr, idx == 0, idx == 1, isEnglish)
+                val desc = getWeatherDescription(weather.daily.weatherCode[idx], isEnglish)
+                val icon = getWeatherIcon(weather.daily.weatherCode[idx], 1)
+                DailyItemData(
+                    dayName = dayName,
+                    description = desc,
+                    weatherIcon = icon,
+                    tempMax = weather.daily.temperatureMax[idx],
+                    tempMin = weather.daily.temperatureMin[idx]
+                )
+            }
+
+            FiveDayForecastCard(
+                dailyItems = dailyItems,
+                isEnglish = isEnglish
+            )
+
+            // CARD 2: 24-HOUR FORECAST CHART
+            val hourlyItems = weather.hourly.time.indices.take(12).map { idx ->
+                val timeStr = weather.hourly.time[idx].substringAfter("T").take(5)
+                val tempVal = weather.hourly.temperature[idx]
+                val icon = getWeatherIcon(weather.hourly.weatherCode[idx], current.isDay)
+                val wind = weather.hourly.windSpeed?.getOrNull(idx) ?: current.windSpeed
+                HourlyItemData(
+                    time = timeStr,
+                    temp = tempVal,
+                    icon = icon,
+                    windSpeed = "${String.format(Locale.US, "%.1f", wind)}km/j"
+                )
+            }
+
+            HourlyForecastChartCard(
+                hourlyItems = hourlyItems,
+                isEnglish = isEnglish
+            )
+
+            // GRID DETAILS SECTION
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                WindCompassCard(
+                    windSpeedKmH = current.windSpeed,
+                    windDirectionDegrees = current.windDirection ?: 225.0,
+                    isEnglish = isEnglish,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(175.dp)
+                )
+
+                WeatherDetailsListCard(
+                    humidity = current.humidity,
+                    feelsLike = current.feelsLike,
+                    uvIndex = current.uvIndex ?: 0.0,
+                    pressure = current.pressure ?: 1014.0,
+                    rainChance = weather.hourly.precipitationProbability.firstOrNull() ?: 99,
+                    isEnglish = isEnglish,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(175.dp)
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                val sunriseTime = weather.daily.sunrise.firstOrNull()?.substringAfter("T")?.take(5) ?: "05:08"
+                val sunsetTime = weather.daily.sunset.firstOrNull()?.substringAfter("T")?.take(5) ?: "17:38"
+
+                SunArcCard(
+                    sunriseTime = sunriseTime,
+                    sunsetTime = sunsetTime,
+                    isEnglish = isEnglish,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(125.dp)
+                )
+
+                // Placeholder / Secondary Detail Card for Grid Symmetry
+                Card(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(125.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0x66294D7A))
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .fillMaxSize(),
+                        verticalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = if (isEnglish) "Visibility" else "Jarak Pandang",
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontSize = 13.sp
+                        )
+                        Text(
+                            text = "10 km",
+                            color = Color.White,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = if (isEnglish) "Clear view" else "Pandangan jelas",
+                            color = Color.White.copy(alpha = 0.75f),
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+
+            // AIR QUALITY CARD
+            AirQualityCard(
+                aqiValue = 62,
+                isEnglish = isEnglish
+            )
+
+            // FOOTER
+            Text(
+                text = if (isEnglish) "Data provided by DayNight Weather" else "Data disediakan oleh DayNight Weather",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp, bottom = 8.dp),
+                color = Color.White.copy(alpha = 0.6f),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Normal
+            )
+        } else if (uiState.isLoading || isGettingLocation) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = Color.White)
+            }
+        } else if (uiState.error != null) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+            ) {
+                Text(
+                    text = uiState.error!!,
+                    modifier = Modifier.padding(16.dp),
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+        }
+    }
+}
+
+private fun getDayLabel(
+    dateString: String,
+    isToday: Boolean,
+    isTomorrow: Boolean,
+    isEnglish: Boolean
+): String {
+    if (isToday) return if (isEnglish) "Today" else "Hari ini"
+    if (isTomorrow) return if (isEnglish) "Tomorrow" else "Besok"
+
+    return try {
+        val date = LocalDate.parse(dateString)
+        val locale = if (isEnglish) Locale.ENGLISH else Locale("id", "ID")
+        date.format(DateTimeFormatter.ofPattern("EEE", locale))
+    } catch (_: Exception) {
+        dateString
     }
 }
 
@@ -522,7 +555,7 @@ private fun getWeatherDescription(
         0 -> if (isEnglish) "Clear sky" else "Cerah"
         1 -> if (isEnglish) "Mainly clear" else "Cerah berawan"
         2 -> if (isEnglish) "Partly cloudy" else "Berawan sebagian"
-        3 -> if (isEnglish) "Overcast" else "Mendung"
+        3 -> if (isEnglish) "Overcast" else "Berawan"
         45, 48 -> if (isEnglish) "Fog" else "Berkabut"
         51, 53, 55 -> if (isEnglish) "Drizzle" else "Gerimis"
         61, 63, 65 -> if (isEnglish) "Rain" else "Hujan"
@@ -531,11 +564,14 @@ private fun getWeatherDescription(
         80, 81, 82 -> if (isEnglish) "Rain showers" else "Hujan deras"
         85, 86 -> if (isEnglish) "Snow showers" else "Hujan salju"
         95, 96, 99 -> if (isEnglish) "Thunderstorm" else "Badai petir"
-        else -> if (isEnglish) "Unknown" else "Tidak diketahui"
+        else -> if (isEnglish) "Unknown" else "Berawan"
     }
 }
 
-private fun getWeatherIcon(code: Int, isDay: Int): String {
+private fun getWeatherIcon(
+    code: Int,
+    isDay: Int
+): String {
     return when (code) {
         0 -> if (isDay == 1) "☀️" else "🌙"
         1, 2 -> if (isDay == 1) "🌤️" else "☁️"
@@ -547,270 +583,6 @@ private fun getWeatherIcon(code: Int, isDay: Int): String {
         80, 81, 82 -> "🌦️"
         85, 86 -> "🌨️"
         95, 96, 99 -> "⛈️"
-        else -> "🌡️"
-    }
-}
-
-// PREVIEW
-
-@Preview(
-    showBackground = true,
-    showSystemUi = true,
-    name = "DayNight - Indonesia Light"
-)
-@Composable
-private fun HomeScreenIndonesianLightPreview() {
-    DayNightTheme(darkTheme = false) {
-        HomeScreenPreviewContent(AppLanguage.INDONESIAN)
-    }
-}
-
-@Preview(
-    showBackground = true,
-    showSystemUi = true,
-    name = "DayNight - Indonesia Dark"
-)
-@Composable
-private fun HomeScreenIndonesianDarkPreview() {
-    DayNightTheme(darkTheme = true) {
-        HomeScreenPreviewContent(AppLanguage.INDONESIAN)
-    }
-}
-
-@Preview(
-    showBackground = true,
-    showSystemUi = true,
-    name = "DayNight - English Light"
-)
-@Composable
-private fun HomeScreenEnglishLightPreview() {
-    DayNightTheme(darkTheme = false) {
-        HomeScreenPreviewContent(AppLanguage.ENGLISH)
-    }
-}
-
-@Preview(
-    showBackground = true,
-    showSystemUi = true,
-    name = "DayNight - English Dark"
-)
-@Composable
-private fun HomeScreenEnglishDarkPreview() {
-    DayNightTheme(darkTheme = true) {
-        HomeScreenPreviewContent(AppLanguage.ENGLISH)
-    }
-}
-
-@Composable
-private fun HomeScreenPreviewContent(language: AppLanguage) {
-    val isEnglish = language == AppLanguage.ENGLISH
-
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
-    ) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            contentPadding = PaddingValues(vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                Column {
-                    Text(
-                        text = "DayNight",
-                        color = MaterialTheme.colorScheme.onBackground,
-                        style = MaterialTheme.typography.headlineMedium
-                    )
-
-                    Text(
-                        text = if (isEnglish) {
-                            "Today's weather information"
-                        } else {
-                            "Informasi cuaca hari ini"
-                        },
-                        color = MaterialTheme.colorScheme.onBackground,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-
-            item {
-                LanguageSelector(
-                    selectedLanguage = language,
-                    onLanguageSelected = {}
-                )
-            }
-
-            item {
-                Column {
-                    Text(
-                        text = if (isEnglish) "Appearance Theme" else "Tema Tampilan",
-                        color = MaterialTheme.colorScheme.onBackground,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    SingleChoiceSegmentedButtonRow(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        val labels = if (isEnglish) {
-                            listOf("Light", "Dark", "System")
-                        } else {
-                            listOf("Terang", "Gelap", "Sistem")
-                        }
-
-                        labels.forEachIndexed { index, label ->
-                            SegmentedButton(
-                                selected = index == 0,
-                                onClick = {},
-                                shape = SegmentedButtonDefaults.itemShape(
-                                    index = index,
-                                    count = labels.size
-                                )
-                            ) {
-                                Text(label)
-                            }
-                        }
-                    }
-                }
-            }
-
-            item {
-                OutlinedTextField(
-                    value = "",
-                    onValueChange = {},
-                    modifier = Modifier.fillMaxWidth(),
-                    label = {
-                        Text(if (isEnglish) "Search city" else "Cari nama kota")
-                    },
-                    placeholder = {
-                        Text(if (isEnglish) "Example: Jakarta" else "Contoh: Jakarta")
-                    },
-                    singleLine = true
-                )
-            }
-
-            item {
-                Button(
-                    onClick = {},
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (isEnglish) "Search Weather" else "Cari Cuaca")
-                }
-            }
-
-            item {
-                WeatherCard(
-                    city = "Yogyakarta",
-                    temperature = 29.0,
-                    description = if (isEnglish) {
-                        "Partly cloudy"
-                    } else {
-                        "Cerah berawan"
-                    },
-                    weatherIcon = "🌤️"
-                )
-            }
-
-            item {
-                Text(
-                    text = if (isEnglish) "Hourly Forecast" else "Prakiraan Per Jam",
-                    color = MaterialTheme.colorScheme.onBackground,
-                    style = MaterialTheme.typography.titleLarge
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(6) { index ->
-                        HourlyForecastCard(
-                            time = "${10 + index}:00",
-                            temperature = 29.0 - index,
-                            weatherIcon = "🌤️"
-                        )
-                    }
-                }
-            }
-
-            item {
-                Text(
-                    text = if (isEnglish) {
-                        "Weather Information"
-                    } else {
-                        "Informasi Cuaca"
-                    },
-                    color = MaterialTheme.colorScheme.onBackground,
-                    style = MaterialTheme.typography.titleLarge
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    WeatherInfoCard(
-                        title = if (isEnglish) "Humidity" else "Kelembapan",
-                        value = "75%",
-                        icon = "💧",
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    WeatherInfoCard(
-                        title = if (isEnglish) "Wind Speed" else "Kecepatan Angin",
-                        value = "12 km/j",
-                        icon = "💨",
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-
-            item {
-                WeatherInfoCard(
-                    title = if (isEnglish) {
-                        "Rain Probability"
-                    } else {
-                        "Kemungkinan Hujan"
-                    },
-                    value = "40%",
-                    icon = "🌧️",
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-
-            item {
-                Text(
-                    text = if (isEnglish) "7-Day Forecast" else "Prakiraan 7 Hari",
-                    color = MaterialTheme.colorScheme.onBackground,
-                    style = MaterialTheme.typography.titleLarge
-                )
-            }
-
-            items(7) { index ->
-                DailyForecastCard(
-                    day = if (isEnglish) {
-                        "Day ${index + 1}"
-                    } else {
-                        listOf(
-                            "Senin", "Selasa", "Rabu", "Kamis",
-                            "Jumat", "Sabtu", "Minggu"
-                        )[index]
-                    },
-                    weatherIcon = "🌤️",
-                    description = if (isEnglish) {
-                        "Partly cloudy"
-                    } else {
-                        "Cerah berawan"
-                    },
-                    temperatureMin = 23.0,
-                    temperatureMax = 30.0
-                )
-            }
-        }
+        else -> "🌤️"
     }
 }
