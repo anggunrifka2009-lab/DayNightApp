@@ -6,6 +6,13 @@ import android.os.Build
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
+data class CitySearchResult(
+    val name: String,
+    val region: String,
+    val latitude: Double,
+    val longitude: Double
+)
+
 class LocationHelper(private val context: Context) {
 
     suspend fun getCityName(
@@ -104,6 +111,56 @@ class LocationHelper(private val context: Context) {
                 } catch (e: Exception) {
                     if (continuation.isActive) {
                         continuation.resume(null)
+                    }
+                }
+            }
+        }
+    }
+
+    suspend fun searchCitySuggestions(query: String): List<CitySearchResult> {
+        if (!Geocoder.isPresent() || query.isBlank()) return emptyList()
+
+        return suspendCancellableCoroutine { continuation ->
+            val geocoder = Geocoder(context)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                geocoder.getFromLocationName(query, 5) { addresses ->
+                    val results = addresses.mapNotNull { address ->
+                        val cityName = address.locality ?: address.subAdminArea ?: address.featureName ?: query
+                        val regionParts = listOfNotNull(address.adminArea, address.countryName).joinToString(", ")
+                        CitySearchResult(
+                            name = cityName,
+                            region = regionParts,
+                            latitude = address.latitude,
+                            longitude = address.longitude
+                        )
+                    }.distinctBy { it.name.lowercase() }
+
+                    if (continuation.isActive) {
+                        continuation.resume(results)
+                    }
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                try {
+                    val addresses = geocoder.getFromLocationName(query, 5) ?: emptyList()
+                    val results = addresses.mapNotNull { address ->
+                        val cityName = address.locality ?: address.subAdminArea ?: address.featureName ?: query
+                        val regionParts = listOfNotNull(address.adminArea, address.countryName).joinToString(", ")
+                        CitySearchResult(
+                            name = cityName,
+                            region = regionParts,
+                            latitude = address.latitude,
+                            longitude = address.longitude
+                        )
+                    }.distinctBy { it.name.lowercase() }
+
+                    if (continuation.isActive) {
+                        continuation.resume(results)
+                    }
+                } catch (e: Exception) {
+                    if (continuation.isActive) {
+                        continuation.resume(emptyList())
                     }
                 }
             }

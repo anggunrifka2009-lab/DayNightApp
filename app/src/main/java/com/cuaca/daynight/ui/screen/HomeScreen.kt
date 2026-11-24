@@ -192,6 +192,21 @@ fun HomeScreen(
                 isManagingCities = false
             },
             onAddCity = { name -> addAndSelectCity(name) },
+            onAddCityResult = { city ->
+                scope.launch {
+                    val existingIndex = savedCities.indexOfFirst { it.name.equals(city.name, ignoreCase = true) }
+                    val targetIndex = if (existingIndex >= 0) {
+                        existingIndex
+                    } else {
+                        savedCities.add(city)
+                        savedCityPreferences.saveCities(savedCities.toList())
+                        savedCities.size - 1
+                    }
+                    viewModel.fetchWeather(city.name, city.latitude, city.longitude)
+                    isManagingCities = false
+                    pagerState.animateScrollToPage(targetIndex)
+                }
+            },
             onDeleteCity = { city ->
                 val index = savedCities.indexOf(city)
                 if (index > 0) { // Index 0 (Lokasi saat ini) tidak dapat dihapus
