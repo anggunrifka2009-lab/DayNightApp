@@ -1,7 +1,6 @@
 package com.cuaca.daynight.ui.components
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
@@ -27,15 +26,11 @@ data class DailyItemData(
 fun FiveDayForecastCard(
     dailyItems: List<DailyItemData>,
     isEnglish: Boolean = false,
-    onMoreDetailsClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val cardBg = if (isDark) Color(0x66294D7A) else Color(0xDDFFFFFF)
     val textColor = if (isDark) Color.White else Color(0xFF1E293B)
-    val subtextColor = if (isDark) Color.White.copy(alpha = 0.75f) else Color(0xFF64748B)
-    val buttonBg = if (isDark) Color.White.copy(alpha = 0.2f) else Color(0xFF3B82F6).copy(alpha = 0.12f)
-    val buttonContent = if (isDark) Color.White else Color(0xFF1D4ED8)
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -50,38 +45,21 @@ fun FiveDayForecastCard(
         ) {
             // Header
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.DateRange,
-                        contentDescription = null,
-                        tint = textColor,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Text(
-                        text = if (isEnglish) "5-day forecast" else "Ramalan 5 hari",
-                        color = textColor,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-
-                TextButton(
-                    onClick = onMoreDetailsClick,
-                    contentPadding = PaddingValues(0.dp)
-                ) {
-                    Text(
-                        text = if (isEnglish) "More details ▸" else "Rincian lainnya ▸",
-                        color = subtextColor,
-                        fontSize = 13.sp
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.DateRange,
+                    contentDescription = null,
+                    tint = textColor,
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = if (isEnglish) "5-day forecast" else "Ramalan 5 hari",
+                    color = textColor,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
             }
 
             // Days list
@@ -119,27 +97,6 @@ fun FiveDayForecastCard(
                         )
                     }
                 }
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Bottom pill button
-            Button(
-                onClick = onMoreDetailsClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(46.dp),
-                shape = CircleShape,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = buttonBg,
-                    contentColor = buttonContent
-                )
-            ) {
-                Text(
-                    text = if (isEnglish) "5-day forecast" else "Ramalan 5 hari",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium
-                )
             }
         }
     }
