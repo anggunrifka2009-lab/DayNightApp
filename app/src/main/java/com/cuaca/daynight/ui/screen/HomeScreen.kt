@@ -1,6 +1,7 @@
 package com.cuaca.daynight.ui.screen
 
 import android.Manifest
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -177,6 +178,10 @@ fun HomeScreen(
     }
 
     if (isManagingCities) {
+        BackHandler {
+            isManagingCities = false
+        }
+
         val currentCityName = savedCities.getOrNull(pagerState.currentPage)?.name ?: ""
         ManageCitiesScreen(
             savedCities = savedCities,
