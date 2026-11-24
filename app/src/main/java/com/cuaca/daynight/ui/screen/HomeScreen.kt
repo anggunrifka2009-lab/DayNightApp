@@ -13,6 +13,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -25,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -332,10 +335,11 @@ fun HomeScreen(
                             val alpha = if (isSelected) 1f else 0.4f
 
                             if (index == 0) {
-                                Text(
-                                    text = "📍",
-                                    fontSize = 10.sp,
-                                    color = Color.White.copy(alpha = alpha)
+                                Icon(
+                                    imageVector = Icons.Default.LocationOn,
+                                    contentDescription = if (isEnglish) "Current Location" else "Lokasi saat ini",
+                                    tint = Color.White.copy(alpha = alpha),
+                                    modifier = Modifier.size(12.dp)
                                 )
                             } else {
                                 Box(
@@ -485,6 +489,11 @@ fun HomeScreen(
                                 isEnglish = isEnglish
                             )
 
+                            val sunriseTime = weather.daily.sunrise.firstOrNull()?.substringAfter("T")?.take(5) ?: "05:08"
+                            val sunsetTime = weather.daily.sunset.firstOrNull()?.substringAfter("T")?.take(5) ?: "17:38"
+                            val daylightSec = weather.daily.daylightDuration?.firstOrNull()
+                            val sunshineSec = weather.daily.sunshineDuration?.firstOrNull()
+
                             // GRID DETAILS SECTION
                             Row(
                                 modifier = Modifier
@@ -496,6 +505,8 @@ fun HomeScreen(
                                     windSpeedKmH = current.windSpeed,
                                     windDirectionDegrees = current.windDirection ?: 225.0,
                                     windGustsKmH = current.windGusts,
+                                    sunriseTime = sunriseTime,
+                                    sunsetTime = sunsetTime,
                                     isEnglish = isEnglish,
                                     modifier = Modifier
                                         .weight(1f)
@@ -517,11 +528,6 @@ fun HomeScreen(
                             }
 
                             // KARTU FAJAR/SENJA + PANJANG HARI
-                            val sunriseTime = weather.daily.sunrise.firstOrNull()?.substringAfter("T")?.take(5) ?: "05:08"
-                            val sunsetTime = weather.daily.sunset.firstOrNull()?.substringAfter("T")?.take(5) ?: "17:38"
-                            val daylightSec = weather.daily.daylightDuration?.firstOrNull()
-                            val sunshineSec = weather.daily.sunshineDuration?.firstOrNull()
-
                             SunArcCard(
                                 sunriseTime = sunriseTime,
                                 sunsetTime = sunsetTime,
@@ -559,16 +565,29 @@ fun HomeScreen(
                                 )
                             }
 
-                            // FOOTER
-                            Text(
-                                text = if (isEnglish) "Data provided by Open-Meteo" else "Data disediakan oleh Open-Meteo",
+                            // FOOTER (Centered with Open-Meteo Logo)
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(top = 12.dp, bottom = 8.dp),
-                                color = Color.White.copy(alpha = 0.6f),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Normal
-                            )
+                                    .padding(top = 16.dp, bottom = 12.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Cloud,
+                                    contentDescription = "Open-Meteo Logo",
+                                    tint = Color.White.copy(alpha = 0.7f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (isEnglish) "Data provided by Open-Meteo" else "Data disediakan oleh Open-Meteo",
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Normal,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                         } else if (uiState.isLoading || (page == 0 && isGettingLocation)) {
                             Box(
                                 modifier = Modifier

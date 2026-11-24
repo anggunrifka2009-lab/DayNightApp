@@ -3,6 +3,8 @@ package com.cuaca.daynight.ui.components
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -56,7 +58,12 @@ fun FiveDayForecastCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text("🗓️", fontSize = 16.sp)
+                    Icon(
+                        imageVector = Icons.Default.DateRange,
+                        contentDescription = null,
+                        tint = textColor,
+                        modifier = Modifier.size(18.dp)
+                    )
                     Text(
                         text = if (isEnglish) "5-day forecast" else "Ramalan 5 hari",
                         color = textColor,

@@ -5,8 +5,11 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,7 +30,7 @@ data class HourlyItemData(
     val temp: Double,
     val icon: String,
     val windSpeed: String,
-    val precipitationMm: Double = 0.0  // ← NEW: curah hujan mm
+    val precipitationMm: Double = 0.0
 )
 
 @Composable
@@ -59,9 +62,11 @@ fun HourlyForecastChartCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Text(
-                    text = "🕒",
-                    fontSize = 16.sp
+                Icon(
+                    imageVector = Icons.Default.Schedule,
+                    contentDescription = null,
+                    tint = textColor,
+                    modifier = Modifier.size(18.dp)
                 )
                 Text(
                     text = if (isEnglish) "24-hour forecast" else "Ramalan 24 jam",
