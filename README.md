@@ -34,8 +34,6 @@ DayNight adalah aplikasi cuaca modern berbasis Android yang dikembangkan menggun
 
 ## Tangkapan Layar (Screenshots)
 
-*(Tempatkan tangkapan layar aplikasi Anda di bawah ini)*
-
 | Halaman Utama (Beranda) | Grafik Cuaca 24 Jam | Rincian & Kompas Angin | Kelola Kota & Pencarian |
 | :---: | :---: | :---: | :---: |
 | ![Beranda](./screenshots/home.jpeg) | ![Grafik Cuaca](./screenshots/weather_details.jpeg) | ![Rincian Cuaca](./screenshots/weather_details_2.jpeg) | ![Kelola Kota](./screenshots/manage_cities.jpeg) |
